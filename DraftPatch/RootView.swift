@@ -104,8 +104,14 @@ struct RootView: View {
           .foregroundStyle(.secondary)
       }
     }
-    .navigationTitle(viewModel.selectedThread?.title ?? "")
+    .navigationTitle("")
     .toolbar {
+      ToolbarItem(placement: .navigation) {
+        if let thread = viewModel.selectedThread {
+          RenamableTitleView(thread: thread)
+        }
+      }
+
       ToolbarItem(placement: .automatic) {
         Picker("Model", selection: $viewModel.selectedModelName) {
           ForEach(viewModel.availableModels, id: \.self) { model in

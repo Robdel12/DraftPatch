@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-class ChatThread {
+class ChatThread: ObservableObject {
   @Attribute(.unique) var id: UUID
   var title: String
   var createdAt: Date
