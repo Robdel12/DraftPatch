@@ -34,7 +34,7 @@ struct RootView: View {
       }
       .toolbar {
         Button("New Chat") {
-          viewModel.createNewThread(title: "New Conversation")
+          viewModel.createDraftThread(title: "New Conversation")
         }
         .keyboardShortcut("n", modifiers: .command)
       }
@@ -70,6 +70,7 @@ struct RootView: View {
                 ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
                   ChatMessageRow(message: msg)
                     .id(msg.id)
+                    .environmentObject(viewModel)
                 }
                 Rectangle()
                   .fill(Color.clear)
@@ -85,7 +86,6 @@ struct RootView: View {
             .onChange(of: thread.messages) { _ in
               scrollToBottom(proxy: proxy)
             }
-            // New onChange handler to scroll when new partial text arrives
             .onChange(of: viewModel.streamingUpdate) { _ in
               scrollToBottom(proxy: proxy)
             }
@@ -100,7 +100,7 @@ struct RootView: View {
               .onSubmit {
                 sendMessage()
               }
-              .disabled(viewModel.thinking)  // Disable input while streaming
+              .disabled(viewModel.thinking)
               .task {
                 isTextFieldFocused = true
               }
@@ -111,7 +111,7 @@ struct RootView: View {
               Image(systemName: "paperplane.fill")
             }
             .buttonStyle(BorderlessButtonStyle())
-            .disabled(viewModel.thinking)  // Disable send button while streaming
+            .disabled(viewModel.thinking)
           }
           .padding()
         }
