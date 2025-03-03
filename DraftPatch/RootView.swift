@@ -25,49 +25,36 @@ struct RootView: View {
               Text(thread.title)
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(thread == viewModel.selectedThread ? Color.accentColor.opacity(0.2) : Color.clear)
+                .background(
+                  thread == viewModel.selectedThread
+                    ? Color.accentColor.opacity(0.2)
+                    : Color.clear
+                )
                 .cornerRadius(8)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
+            .contextMenu {
+              Button(role: .destructive) {
+                viewModel.deleteThread(thread)
+              } label: {
+                Text("Delete")
+              }
+            }
           }
         }
-      }
-      .toolbar {
-        Button("New Chat") {
-          viewModel.createDraftThread(title: "New Conversation")
-        }
-        .keyboardShortcut("n", modifiers: .command)
       }
     } detail: {
       if let thread = viewModel.selectedThread {
         VStack {
-          HStack {
-            Text(thread.title)
-              .font(.title2)
-            Spacer()
-
-            Picker(
-              "Model",
-              selection: Binding(
-                get: { thread.modelName },
-                set: { newModel in
-                  viewModel.setModelForCurrentThread(newModel)
-                }
-              )
-            ) {
-              ForEach(viewModel.availableModels, id: \.self) { model in
-                Text(model)
-              }
-            }
-            .pickerStyle(MenuPickerStyle())
-          }
-          .padding([.top, .horizontal])
-
           Divider()
+
           ScrollViewReader { proxy in
-            ScrollView(.vertical) {
+            ScrollView {
               VStack(spacing: 8) {
-                ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
+                ForEach(
+                  thread.messages.sorted(by: { $0.timestamp < $1.timestamp }),
+                  id: \.id
+                ) { msg in
                   ChatMessageRow(message: msg)
                     .id(msg.id)
                     .environmentObject(viewModel)
@@ -83,13 +70,14 @@ struct RootView: View {
               scrollProxy = proxy
               scrollToBottom(proxy: proxy)
             }
-            .onChange(of: thread.messages) { _ in
+            .onChange(of: thread.messages) {
               scrollToBottom(proxy: proxy)
             }
-            .onChange(of: viewModel.streamingUpdate) { _ in
+            .onChange(of: viewModel.streamingUpdate) {
               scrollToBottom(proxy: proxy)
             }
           }
+
           Divider()
 
           HStack {
@@ -97,20 +85,16 @@ struct RootView: View {
               .lineLimit(4, reservesSpace: true)
               .cornerRadius(8)
               .focused($isTextFieldFocused)
-              .onSubmit {
-                sendMessage()
-              }
+              .onSubmit { sendMessage() }
               .disabled(viewModel.thinking)
-              .task {
-                isTextFieldFocused = true
-              }
+              .task { isTextFieldFocused = true }
 
             Button {
               sendMessage()
             } label: {
               Image(systemName: "paperplane.fill")
             }
-            .buttonStyle(BorderlessButtonStyle())
+            .buttonStyle(.borderless)
             .disabled(viewModel.thinking)
           }
           .padding()
@@ -118,6 +102,25 @@ struct RootView: View {
       } else {
         Text("No chat selected")
           .foregroundStyle(.secondary)
+      }
+    }
+    .navigationTitle(viewModel.selectedThread?.title ?? "")
+    .toolbar {
+      ToolbarItem(placement: .automatic) {
+        Picker("Model", selection: $viewModel.selectedModelName) {
+          ForEach(viewModel.availableModels, id: \.self) { model in
+            Text(model)
+          }
+        }
+        .pickerStyle(.menu)
+      }
+
+      ToolbarItem(placement: .primaryAction) {
+        Button {
+          viewModel.createDraftThread(title: "New Conversation")
+        } label: {
+          Label("New Chat", systemImage: "highlighter")
+        }
       }
     }
   }
