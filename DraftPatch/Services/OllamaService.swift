@@ -94,7 +94,6 @@ final class OllamaService {
       return AsyncStream { $0.finish() }
     }
 
-    // 3) Return an AsyncStream of partial text
     return AsyncStream<String> { continuation in
       Task {
         do {
