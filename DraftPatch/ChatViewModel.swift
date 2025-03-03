@@ -16,6 +16,7 @@ class ChatViewModel: ObservableObject {
   @Published var selectedThread: ChatThread?
   @Published var draftThread: ChatThread? = nil
   @Published var availableModels: [String] = []
+  @Published var selectedModelName: String = ""
   @Published var thinking: Bool = false
   @Published var streamingUpdate: UUID = UUID()
 
@@ -31,6 +32,12 @@ class ChatViewModel: ObservableObject {
     do {
       let models = try await OllamaService.shared.fetchAvailableModels()
       self.availableModels = models
+
+      if let firstModel = models.first {
+        self.selectedModelName = firstModel
+      } else {
+        self.selectedModelName = "No Models Found"
+      }
     } catch {
       print("Error loading models: \(error)")
     }
@@ -38,7 +45,7 @@ class ChatViewModel: ObservableObject {
 
   private func loadThreads() {
     let descriptor = FetchDescriptor<ChatThread>(
-      sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+      sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
     )
     do {
       chatThreads = try context.fetch(descriptor)
@@ -126,6 +133,9 @@ class ChatViewModel: ObservableObject {
         print("Error generating thread title: \(error)")
       }
     }
+
+    thread.updatedAt = Date()
+    saveContext()
   }
 
   private func saveContext() {
@@ -134,6 +144,24 @@ class ChatViewModel: ObservableObject {
       objectWillChange.send()
     } catch {
       print("Error saving context: \(error)")
+    }
+  }
+
+  func deleteThread(_ thread: ChatThread) {
+    context.delete(thread)
+
+    do {
+      try context.save()
+
+      if let index = chatThreads.firstIndex(where: { $0.id == thread.id }) {
+        chatThreads.remove(at: index)
+      }
+
+      if selectedThread == thread {
+        selectedThread = chatThreads.first
+      }
+    } catch {
+      print("Error deleting thread: \(error)")
     }
   }
 }
