@@ -32,6 +32,9 @@ struct DraftPatchApp: App {
 
     let ctx = ModelContext(self.modelContainer)
     _viewModel = StateObject(wrappedValue: ChatViewModel(context: ctx))
+
+    // Request accessibility permissions for drafting
+    AccessibilityTextService.shared.checkAccessibilityPermission()
   }
 
   var body: some Scene {
