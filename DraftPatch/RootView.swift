@@ -12,7 +12,6 @@ struct RootView: View {
   @EnvironmentObject var viewModel: ChatViewModel
   @State private var userMessage = ""
   @FocusState private var isTextFieldFocused: Bool
-  @State private var scrollProxy: ScrollViewProxy?
 
   var body: some View {
     NavigationSplitView {
@@ -68,40 +67,81 @@ struct RootView: View {
           }
           .defaultScrollAnchor(.bottom)
 
-          HStack(spacing: 8) {
-            let placeholder = viewModel.thinking ? "Sending..." : "Draft a message"
+          VStack(spacing: 8) {
+            HStack(spacing: 8) {
+              let placeholder = viewModel.thinking ? "Sending..." : "Draft a message"
 
-            TextField(placeholder, text: $userMessage, axis: .vertical)
-              .lineLimit(4, reservesSpace: true)
-              .font(.system(size: 14))
-              .textFieldStyle(.plain)
-              .padding()
-              .background(
-                RoundedRectangle(cornerRadius: 8)
-                  .fill(Color(.secondarySystemFill))
-              )
-              .cornerRadius(8)
-              .focused($isTextFieldFocused)
-              .onSubmit { sendMessage() }
+              TextField(placeholder, text: $userMessage, axis: .vertical)
+                .lineLimit(4, reservesSpace: true)
+                .font(.system(size: 14))
+                .textFieldStyle(.plain)
+                .padding()
+                .background(
+                  RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.secondarySystemFill))
+                )
+                .cornerRadius(8)
+                .focused($isTextFieldFocused)
+                .onSubmit { sendMessage() }
+                .disabled(viewModel.thinking)
+                .task { isTextFieldFocused = true }
+
+              Button(action: { sendMessage() }) {
+                Image(systemName: "paperplane.fill")
+                  .font(.title2)
+                  .foregroundStyle(viewModel.thinking ? Color.gray : Color.accentColor)
+              }
+              .buttonStyle(.borderless)
               .disabled(viewModel.thinking)
-              .task { isTextFieldFocused = true }
-
-            Button(action: {
-              sendMessage()
-            }) {
-              Image(systemName: "paperplane.fill")
-                .font(.title2)
-                .foregroundStyle(viewModel.thinking ? Color.gray : Color.accentColor)
             }
-            .buttonStyle(.borderless)
-            .disabled(viewModel.thinking)
+            .padding()
+            .background(
+              RoundedRectangle(cornerRadius: 10)
+                .fill(Color(NSColor.windowBackgroundColor))
+                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: -1)
+            )
+
+            HStack {
+              Spacer()
+
+              Menu {
+                Button {
+                  viewModel.selectedDraftApp = nil
+                } label: {
+                  if viewModel.selectedDraftApp == nil {
+                    Image(systemName: "checkmark")
+                  }
+                  Text("None")
+                }
+
+                ForEach(DraftApp.allCases) { app in
+                  Button {
+                    viewModel.selectedDraftApp = app
+                  } label: {
+                    if viewModel.selectedDraftApp == app {
+                      Image(systemName: "checkmark")
+                    }
+                    Text(app.rawValue)
+                  }
+                }
+              } label: {
+                HStack(spacing: 6) {
+                  Image(systemName: "pencil.and.outline")
+                    .font(.title3)
+                  Text(viewModel.selectedDraftApp?.rawValue ?? "Draft with…")
+                    .font(.callout)
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color(.secondarySystemFill))
+                .cornerRadius(8)
+              }
+
+              Spacer()
+            }
+            .padding(.horizontal)
           }
-          .padding()
-          .background(
-            RoundedRectangle(cornerRadius: 10)
-              .fill(Color(NSColor.windowBackgroundColor))
-              .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: -1)
-          )
         }
       } else {
         Text("No chat selected")
@@ -142,19 +182,7 @@ struct RootView: View {
 
     Task {
       await viewModel.sendMessage(textToSend)
-
-      if let proxy = scrollProxy, let firstMessageId = viewModel.selectedThread?.messages.first?.id {
-        withAnimation {
-          proxy.scrollTo(firstMessageId, anchor: .top)
-        }
-      }
     }
     userMessage = ""
-  }
-
-  private func scrollToBottom(proxy: ScrollViewProxy) {
-    withAnimation {
-      proxy.scrollTo("bottom", anchor: .bottom)
-    }
   }
 }

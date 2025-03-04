@@ -8,6 +8,22 @@
 import SwiftData
 import SwiftUI
 
+enum DraftApp: String, CaseIterable, Identifiable {
+  case xcode = "Xcode"
+  case emacs = "Emacs"
+
+  var id: String { self.rawValue }
+
+  var identifier: String {
+    switch self {
+    case .xcode:
+      return "com.apple.dt.Xcode"
+    case .emacs:
+      return "org.gnu.Emacs"
+    }
+  }
+}
+
 @MainActor
 class ChatViewModel: ObservableObject {
   private var context: ModelContext
@@ -21,11 +37,21 @@ class ChatViewModel: ObservableObject {
   @Published var visibleScrollHeight: CGFloat = 0
   @Published var streamingUpdate: UUID = UUID()
 
+  @Published var isDraftingEnabled: Bool = false
+  @Published var selectedDraftApp: DraftApp? = nil
+
   init(context: ModelContext) {
     self.context = context
     loadThreads()
     Task {
       await loadLocalModels()
+    }
+  }
+
+  func toggleDrafting() {
+    isDraftingEnabled.toggle()
+    if !isDraftingEnabled {
+      selectedDraftApp = nil
     }
   }
 
@@ -76,8 +102,33 @@ class ChatViewModel: ObservableObject {
 
   /// Handle sending a message. If we’re currently working with a draft,
   /// we insert that draft into the context before persisting the message.
-  func sendMessage(_ text: String) async {
+  func sendMessage(_ text: String? = nil) async {
     guard let thread = selectedThread else { return }
+
+    // Fetch selected text if a DraftApp is selected
+    let selectedText = selectedDraftApp.flatMap { draftApp in
+      AccessibilityTextService.shared.getSelectedOrActiveText(appIdentifier: draftApp.identifier)
+    }
+
+    // Format the message: append selected text if available
+    let messageText: String
+    if let text = text {
+      if let selectedText, !selectedText.isEmpty {
+        messageText = """
+          \(text)
+
+          ---
+
+          \(selectedText)
+          """
+      } else {
+        messageText = text
+      }
+    } else if let selectedText, !selectedText.isEmpty {
+      messageText = selectedText
+    } else {
+      return
+    }
 
     if let draftThread, draftThread == thread {
       context.insert(thread)
@@ -91,7 +142,7 @@ class ChatViewModel: ObservableObject {
       self.draftThread = nil
     }
 
-    let userMsg = ChatMessage(text: text, role: .user)
+    let userMsg = ChatMessage(text: messageText, role: .user)
     thread.messages.append(userMsg)
     saveContext()
 
@@ -129,7 +180,7 @@ class ChatViewModel: ObservableObject {
       if thread.title == "New Conversation" {
         do {
           let title = try await OllamaService.shared.generateTitle(
-            for: text,
+            for: messageText,
             modelName: thread.modelName
           )
           thread.title = title
