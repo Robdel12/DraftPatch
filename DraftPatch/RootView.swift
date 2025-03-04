@@ -78,26 +78,37 @@ struct RootView: View {
             }
           }
 
-          Divider()
-
-          HStack {
-            TextField("Send a message...", text: $userMessage, axis: .vertical)
+          HStack(spacing: 8) {
+            TextField("Draft a message", text: $userMessage, axis: .vertical)
               .lineLimit(4, reservesSpace: true)
+              .font(.system(size: 14))
+              .textFieldStyle(.plain)
+              .padding()
+              .background(
+                RoundedRectangle(cornerRadius: 8)
+                  .fill(Color(.secondarySystemFill))
+              )
               .cornerRadius(8)
               .focused($isTextFieldFocused)
               .onSubmit { sendMessage() }
               .disabled(viewModel.thinking)
               .task { isTextFieldFocused = true }
 
-            Button {
+            Button(action: {
               sendMessage()
-            } label: {
+            }) {
               Image(systemName: "paperplane.fill")
+                .font(.system(size: 16))
             }
             .buttonStyle(.borderless)
             .disabled(viewModel.thinking)
           }
           .padding()
+          .background(
+            RoundedRectangle(cornerRadius: 10)
+              .fill(Color(NSColor.windowBackgroundColor))
+              .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: -1)
+          )
         }
       } else {
         Text("No chat selected")
@@ -127,6 +138,7 @@ struct RootView: View {
         } label: {
           Label("New Chat", systemImage: "highlighter")
         }
+        .keyboardShortcut("n", modifiers: .command)
       }
     }
   }

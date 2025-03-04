@@ -20,17 +20,20 @@ class ChatMessage: Equatable {
   var text: String
   var role: Role
   var timestamp: Date
+  var streaming: Bool = false
 
   init(
     id: UUID = UUID(),
     text: String,
     role: Role,
-    timestamp: Date = Date()
+    timestamp: Date = Date(),
+    streaming: Bool = false
   ) {
     self.id = id
     self.text = text
     self.role = role
     self.timestamp = timestamp
+    self.streaming = streaming
   }
 
   static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {

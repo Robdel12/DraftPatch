@@ -46,6 +46,7 @@ private func parseMessage(_ text: String) -> [MessageSegment] {
 struct CollapsibleThinkView: View {
   let text: String
   let isStreaming: Bool
+
   @State private var isExpanded = false
 
   var body: some View {
@@ -55,17 +56,14 @@ struct CollapsibleThinkView: View {
         Markdown(text)
           .padding(.horizontal)
           .padding(.bottom)
-
         Divider()
           .padding(.bottom)
       },
       label: {
         HStack {
           Image(systemName: "brain.head.profile")
-            .foregroundColor(.blue)
           Text(isStreaming ? "Reasoning..." : "Reasoned")
             .font(.subheadline)
-            .foregroundColor(.primary)
         }
         .padding(8)
         .background(Color.blue.opacity(0.1))
@@ -78,8 +76,8 @@ struct CollapsibleThinkView: View {
 }
 
 struct ParsedMessageView: View {
-  @EnvironmentObject var viewModel: ChatViewModel
   let text: String
+  let isStreaming: Bool
 
   var body: some View {
     let segments = parseMessage(text)
@@ -88,8 +86,9 @@ struct ParsedMessageView: View {
         switch segments[index] {
         case .normal(let content):
           Markdown(content)
+
         case .think(let content):
-          CollapsibleThinkView(text: content, isStreaming: viewModel.thinking)
+          CollapsibleThinkView(text: content, isStreaming: isStreaming)
         }
       }
     }
@@ -98,6 +97,7 @@ struct ParsedMessageView: View {
 
 struct ChatMessageRow: View {
   let message: ChatMessage
+
   @EnvironmentObject var viewModel: ChatViewModel
 
   var body: some View {
@@ -110,16 +110,17 @@ struct ChatMessageRow: View {
     case .user:
       HStack {
         Spacer()
-        ParsedMessageView(text: msg.text)
+        ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
           .padding()
           .background(Color.accentColor.opacity(0.2))
           .cornerRadius(8)
           .environmentObject(viewModel)
           .textSelection(.enabled)
       }
+
     case .assistant, .system:
       HStack {
-        ParsedMessageView(text: msg.text)
+        ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
           .padding()
           .background(Color.gray.opacity(0.2))
           .cornerRadius(8)

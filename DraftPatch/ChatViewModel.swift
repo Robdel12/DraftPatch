@@ -108,7 +108,7 @@ class ChatViewModel: ObservableObject {
 
     thinking = true
 
-    let assistantMsg = ChatMessage(text: "", role: .assistant)
+    let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
     thread.messages.append(assistantMsg)
     saveContext()
 
@@ -119,6 +119,9 @@ class ChatViewModel: ObservableObject {
     }
 
     thinking = false
+    assistantMsg.streaming = false
+    thread.updatedAt = Date()
+    saveContext()
 
     // If it was a brand new conversation, generate a title asynchronously
     if thread.title == "New Conversation" {
@@ -133,9 +136,6 @@ class ChatViewModel: ObservableObject {
         print("Error generating thread title: \(error)")
       }
     }
-
-    thread.updatedAt = Date()
-    saveContext()
   }
 
   private func saveContext() {
