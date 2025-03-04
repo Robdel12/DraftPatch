@@ -48,35 +48,25 @@ struct RootView: View {
         VStack {
           Divider()
 
-          ScrollViewReader { proxy in
-            ScrollView {
-              VStack(spacing: 8) {
-                ForEach(
-                  thread.messages.sorted(by: { $0.timestamp < $1.timestamp }),
-                  id: \.id
-                ) { msg in
-                  ChatMessageRow(message: msg)
-                    .id(msg.id)
-                    .environmentObject(viewModel)
-                }
-                Rectangle()
-                  .fill(Color.clear)
-                  .frame(width: 1, height: 1)
-                  .id("bottom")
+          ScrollView {
+            LazyVStack(spacing: 8) {
+              ForEach(
+                thread.messages.sorted(by: { $0.timestamp < $1.timestamp }),
+                id: \.id
+              ) { msg in
+                ChatMessageRow(message: msg)
+                  .id(msg.id)
+                  .environmentObject(viewModel)
               }
-              .padding()
+
+              Rectangle()
+                .fill(Color.clear)
+                .frame(width: 1, height: 1)
+                .id("bottom")
             }
-            .onAppear {
-              scrollProxy = proxy
-              scrollToBottom(proxy: proxy)
-            }
-            .onChange(of: thread.messages) {
-              scrollToBottom(proxy: proxy)
-            }
-            .onChange(of: viewModel.streamingUpdate) {
-              scrollToBottom(proxy: proxy)
-            }
+            .padding()
           }
+          .defaultScrollAnchor(.bottom)
 
           HStack(spacing: 8) {
             TextField("Draft a message", text: $userMessage, axis: .vertical)
@@ -146,8 +136,10 @@ struct RootView: View {
   private func sendMessage() {
     let textToSend = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !textToSend.isEmpty else { return }
+
     Task {
       await viewModel.sendMessage(textToSend)
+
       if let proxy = scrollProxy, let firstMessageId = viewModel.selectedThread?.messages.first?.id {
         withAnimation {
           proxy.scrollTo(firstMessageId, anchor: .top)

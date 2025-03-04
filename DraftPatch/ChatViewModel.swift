@@ -18,6 +18,7 @@ class ChatViewModel: ObservableObject {
   @Published var availableModels: [String] = []
   @Published var selectedModelName: String = ""
   @Published var thinking: Bool = false
+  @Published var visibleScrollHeight: CGFloat = 0
   @Published var streamingUpdate: UUID = UUID()
 
   init(context: ModelContext) {
