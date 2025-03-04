@@ -53,9 +53,8 @@ struct CollapsibleThinkView: View {
     DisclosureGroup(
       isExpanded: $isExpanded,
       content: {
-        Markdown(text)
-          .padding(.horizontal)
-          .padding(.bottom)
+        MarkdownCodeView(text: text)
+
         Divider()
           .padding(.bottom)
       },
@@ -85,8 +84,7 @@ struct ParsedMessageView: View {
       ForEach(0..<segments.count, id: \.self) { index in
         switch segments[index] {
         case .normal(let content):
-          Markdown(content)
-
+          MarkdownCodeView(text: content)
         case .think(let content):
           CollapsibleThinkView(text: content, isStreaming: isStreaming)
         }
