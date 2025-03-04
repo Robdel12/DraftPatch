@@ -84,11 +84,7 @@ struct SyntaxHighlightedCodeBlock: View {
     let nsAttributedString =
       highlightr.highlight(code, as: language ?? "swift") ?? NSAttributedString(string: code)
 
-    if let attrString = try? AttributedString(nsAttributedString) {
-      highlightedText = attrString
-    } else {
-      highlightedText = AttributedString(code)
-    }
+    highlightedText = AttributedString(nsAttributedString)
   }
 
   private func copyToClipboard() {
