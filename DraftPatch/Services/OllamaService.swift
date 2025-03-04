@@ -76,60 +76,53 @@ final class OllamaService {
   }
 
   // POST /api/chat => streaming
-  func streamChat(messages: [[String: Any]], modelName: String) -> AsyncStream<String> {
-    let url = baseURL.appendingPathComponent("api/chat")
-    var request = URLRequest(url: url)
-    request.httpMethod = "POST"
-    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-
-    let payload: [String: Any] = [
-      "model": modelName,
-      "messages": messages,
-      "stream": true,
-    ]
-
-    do {
-      request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-    } catch {
-      return AsyncStream { $0.finish() }
-    }
-
-    return AsyncStream<String> { continuation in
+  func streamChat(messages: [[String: Any]], modelName: String) -> AsyncThrowingStream<String, Error> {
+    AsyncThrowingStream { continuation in
       Task {
         do {
+          let url = baseURL.appendingPathComponent("api/chat")
+          var request = URLRequest(url: url)
+          request.httpMethod = "POST"
+          request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+          let payload: [String: Any] = [
+            "model": modelName,
+            "messages": messages,
+            "stream": true,
+          ]
+
+          request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
           let (stream, _) = try await URLSession.shared.bytes(for: request)
 
           for try await line in stream.lines {
-            guard let data = line.data(using: .utf8),
-              let chunk = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else {
+            guard let data = line.data(using: .utf8) else {
               continue
             }
 
-            // chunk might look like:
-            // {
-            //   "model": "...",
-            //   "created_at": "...",
-            //   "message": { "role": "assistant", "content": "partial" },
-            //   "done": false
-            // }
-            if let messageObj = chunk["message"] as? [String: Any],
-              let partialText = messageObj["content"] as? String,
-              !partialText.isEmpty
-            {
-              continuation.yield(partialText)
-            }
+            do {
+              let chunk = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
-            if let done = chunk["done"] as? Bool, done {
-              continuation.finish()
+              if let messageObj = chunk?["message"] as? [String: Any],
+                let partialText = messageObj["content"] as? String,
+                !partialText.isEmpty
+              {
+                continuation.yield(partialText)
+              }
+
+              if let done = chunk?["done"] as? Bool, done {
+                continuation.finish()
+                return
+              }
+            } catch {
+              continuation.finish(throwing: error)
               return
             }
           }
 
           continuation.finish()
         } catch {
-          print("Stream error: \(error)")
-          continuation.finish()
+          continuation.finish(throwing: error)
         }
       }
     }
