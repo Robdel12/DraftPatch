@@ -86,8 +86,8 @@ class ChatViewModel: ObservableObject {
         chatThreads.insert(thread, at: 0)
       } catch {
         print("Error saving new thread: \(error)")
+        return
       }
-
       self.draftThread = nil
     }
 
@@ -113,30 +113,39 @@ class ChatViewModel: ObservableObject {
     thread.messages.append(assistantMsg)
     saveContext()
 
-    for await partialText in tokenStream {
-      assistantMsg.text += partialText
+    do {
+      for try await partialText in tokenStream {
+        assistantMsg.text += partialText
+        saveContext()
+        streamingUpdate = UUID()
+      }
+
+      // Mark completion
+      assistantMsg.streaming = false
+      thread.updatedAt = Date()
       saveContext()
-      streamingUpdate = UUID()
+
+      // If it was a brand new conversation, generate a title asynchronously
+      if thread.title == "New Conversation" {
+        do {
+          let title = try await OllamaService.shared.generateTitle(
+            for: text,
+            modelName: thread.modelName
+          )
+          thread.title = title
+          saveContext()
+        } catch {
+          print("Error generating thread title: \(error)")
+        }
+      }
+    } catch {
+      print("Error during streaming: \(error)")
+      thinking = false
+      assistantMsg.streaming = false
+      saveContext()
     }
 
     thinking = false
-    assistantMsg.streaming = false
-    thread.updatedAt = Date()
-    saveContext()
-
-    // If it was a brand new conversation, generate a title asynchronously
-    if thread.title == "New Conversation" {
-      do {
-        let title = try await OllamaService.shared.generateTitle(
-          for: text,
-          modelName: thread.modelName
-        )
-        thread.title = title
-        saveContext()
-      } catch {
-        print("Error generating thread title: \(error)")
-      }
-    }
   }
 
   private func saveContext() {

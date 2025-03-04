@@ -69,7 +69,9 @@ struct RootView: View {
           .defaultScrollAnchor(.bottom)
 
           HStack(spacing: 8) {
-            TextField("Draft a message", text: $userMessage, axis: .vertical)
+            let placeholder = viewModel.thinking ? "Sending..." : "Draft a message"
+
+            TextField(placeholder, text: $userMessage, axis: .vertical)
               .lineLimit(4, reservesSpace: true)
               .font(.system(size: 14))
               .textFieldStyle(.plain)
@@ -88,7 +90,8 @@ struct RootView: View {
               sendMessage()
             }) {
               Image(systemName: "paperplane.fill")
-                .font(.system(size: 16))
+                .font(.title2)
+                .foregroundStyle(viewModel.thinking ? Color.gray : Color.accentColor)
             }
             .buttonStyle(.borderless)
             .disabled(viewModel.thinking)
