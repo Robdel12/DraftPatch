@@ -44,36 +44,35 @@ struct RootView: View {
     } detail: {
       if let thread = viewModel.selectedThread {
         VStack {
-          Divider()
+          VStack(spacing: 0) {
+            ScrollView {
+              LazyVStack(spacing: 8) {
+                ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
+                  ChatMessageRow(message: msg)
+                    .id(msg.id)
+                    .environmentObject(viewModel)
+                }
 
-          ScrollView {
-            LazyVStack(spacing: 8) {
-              ForEach(
-                thread.messages.sorted(by: { $0.timestamp < $1.timestamp }),
-                id: \.id
-              ) { msg in
-                ChatMessageRow(message: msg)
-                  .id(msg.id)
-                  .environmentObject(viewModel)
+                Rectangle()
+                  .fill(Color.clear)
+                  .frame(width: 1, height: 1)
+                  .id("bottom")
               }
-
-              Rectangle()
-                .fill(Color.clear)
-                .frame(width: 1, height: 1)
-                .id("bottom")
+              .padding()
             }
-            .padding()
-          }
-          .defaultScrollAnchor(.bottom)
+            .defaultScrollAnchor(.bottom)
 
-          ChatBoxView(
-            userMessage: $userMessage,
-            selectedDraftApp: $viewModel.selectedDraftApp,
-            thinking: viewModel.thinking,
-            onSubmit: sendMessage
-          )
-          .padding(.horizontal)
+            ChatBoxView(
+              userMessage: $userMessage,
+              selectedDraftApp: $viewModel.selectedDraftApp,
+              thinking: viewModel.thinking,
+              onSubmit: sendMessage
+            )
+            .padding(.horizontal)
+          }
+          .frame(maxWidth: 960)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.bottom, 12)
         .background(Color(.black).opacity(0.2))
       } else {
