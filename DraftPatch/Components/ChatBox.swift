@@ -18,16 +18,16 @@ struct ChatBoxView: View {
 
   var body: some View {
     VStack(spacing: 16) {
-      let placeholder = thinking ? "Sending..." : "Draft a message"
-
-      TextField(placeholder, text: $userMessage, axis: .vertical)
+      TextField(thinking ? "Sending..." : "Draft a message", text: $userMessage, axis: .vertical)
         .multilineTextAlignment(.leading)
+        .font(.system(size: 14, weight: .regular, design: .rounded))
         .textFieldStyle(PlainTextFieldStyle())
         .focused($isTextFieldFocused)
         .disabled(thinking)
-        .font(.system(size: 14, weight: .regular, design: .rounded))
         .onAppear {
-          isTextFieldFocused = true
+          DispatchQueue.main.async {
+            isTextFieldFocused = true
+          }
         }
         .onKeyPress { keyPress in
           if keyPress.modifiers == .shift
