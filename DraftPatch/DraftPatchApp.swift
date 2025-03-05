@@ -11,7 +11,7 @@ import SwiftUI
 @main
 struct DraftPatchApp: App {
   private let modelContainer: ModelContainer
-  @StateObject private var viewModel: ChatViewModel
+  @StateObject private var viewModel: DraftPatchViewModel
 
   init() {
     do {
@@ -31,7 +31,7 @@ struct DraftPatchApp: App {
     }
 
     let ctx = ModelContext(self.modelContainer)
-    _viewModel = StateObject(wrappedValue: ChatViewModel(context: ctx))
+    _viewModel = StateObject(wrappedValue: DraftPatchViewModel(context: ctx))
 
     // Request accessibility permissions for drafting
     AccessibilityTextService.shared.checkAccessibilityPermission()
@@ -42,6 +42,7 @@ struct DraftPatchApp: App {
       RootView()
         .modelContainer(modelContainer)
         .environmentObject(viewModel)
+        .preferredColorScheme(.dark)
     }
   }
 }

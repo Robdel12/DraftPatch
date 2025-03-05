@@ -9,9 +9,8 @@ import SwiftData
 import SwiftUI
 
 struct RootView: View {
-  @EnvironmentObject var viewModel: ChatViewModel
+  @EnvironmentObject var viewModel: DraftPatchViewModel
   @State private var userMessage = ""
-  @FocusState private var isTextFieldFocused: Bool
 
   var body: some View {
     NavigationSplitView {
@@ -67,85 +66,35 @@ struct RootView: View {
           }
           .defaultScrollAnchor(.bottom)
 
-          VStack(spacing: 8) {
-            HStack(spacing: 8) {
-              let placeholder = viewModel.thinking ? "Sending..." : "Draft a message"
-
-              TextField(placeholder, text: $userMessage, axis: .vertical)
-                .lineLimit(4, reservesSpace: true)
-                .font(.system(size: 14))
-                .textFieldStyle(.plain)
-                .padding()
-                .background(
-                  RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.secondarySystemFill))
-                )
-                .cornerRadius(8)
-                .focused($isTextFieldFocused)
-                .onSubmit { sendMessage() }
-                .disabled(viewModel.thinking)
-                .task { isTextFieldFocused = true }
-
-              Button(action: { sendMessage() }) {
-                Image(systemName: "paperplane.fill")
-                  .font(.title2)
-                  .foregroundStyle(viewModel.thinking ? Color.gray : Color.accentColor)
-              }
-              .buttonStyle(.borderless)
-              .disabled(viewModel.thinking)
-            }
-            .padding()
-            .background(
-              RoundedRectangle(cornerRadius: 10)
-                .fill(Color(NSColor.windowBackgroundColor))
-                .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: -1)
-            )
-
-            HStack {
-              Spacer()
-
-              Menu {
-                Button {
-                  viewModel.selectedDraftApp = nil
-                } label: {
-                  if viewModel.selectedDraftApp == nil {
-                    Image(systemName: "checkmark")
-                  }
-                  Text("None")
-                }
-
-                ForEach(DraftApp.allCases) { app in
-                  Button {
-                    viewModel.selectedDraftApp = app
-                  } label: {
-                    if viewModel.selectedDraftApp == app {
-                      Image(systemName: "checkmark")
-                    }
-                    Text(app.rawValue)
-                  }
-                }
-              } label: {
-                HStack(spacing: 6) {
-                  Image(systemName: "pencil.and.outline")
-                    .font(.title3)
-                  Text(viewModel.selectedDraftApp?.rawValue ?? "Draft with…")
-                    .font(.callout)
-                }
-                .foregroundColor(.primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color(.secondarySystemFill))
-                .cornerRadius(8)
-              }
-
-              Spacer()
-            }
-            .padding(.horizontal)
-          }
+          ChatBoxView(
+            userMessage: $userMessage,
+            selectedDraftApp: $viewModel.selectedDraftApp,
+            thinking: viewModel.thinking,
+            onSubmit: sendMessage
+          )
+          .padding(.horizontal)
         }
+        .padding(.bottom, 12)
+        .background(Color(.black).opacity(0.2))
       } else {
-        Text("No chat selected")
-          .foregroundStyle(.secondary)
+        VStack(spacing: 16) {
+          Image(systemName: "flag.checkered")
+            .resizable()
+            .scaledToFit()
+            .frame(width: 80, height: 80)
+            .foregroundStyle(.secondary)
+
+          Text("No chat selected")
+            .font(.title2)
+            .bold()
+
+          Text("Select a chat and start drafting!")
+            .multilineTextAlignment(.center)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.black).opacity(0.1))
       }
     }
     .navigationTitle("")
