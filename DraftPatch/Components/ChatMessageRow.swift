@@ -96,7 +96,7 @@ struct ParsedMessageView: View {
 struct ChatMessageRow: View {
   let message: ChatMessage
 
-  @EnvironmentObject var viewModel: ChatViewModel
+  @EnvironmentObject var viewModel: DraftPatchViewModel
 
   var body: some View {
     messageBubble(message)

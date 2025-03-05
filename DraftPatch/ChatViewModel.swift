@@ -25,7 +25,7 @@ enum DraftApp: String, CaseIterable, Identifiable {
 }
 
 @MainActor
-class ChatViewModel: ObservableObject {
+class DraftPatchViewModel: ObservableObject {
   private var context: ModelContext
 
   @Published var chatThreads: [ChatThread] = []
