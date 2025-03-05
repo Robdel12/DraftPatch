@@ -14,6 +14,7 @@ struct ChatBoxView: View {
   let onSubmit: () -> Void
 
   @FocusState private var isTextFieldFocused: Bool
+  @State private var isShowingPopover = false
 
   var body: some View {
     VStack(spacing: 16) {
@@ -25,19 +26,76 @@ struct ChatBoxView: View {
         .focused($isTextFieldFocused)
         .disabled(thinking)
         .font(.system(size: 14, weight: .regular, design: .rounded))
+        .onAppear {
+          isTextFieldFocused = true
+        }
+        .onKeyPress { keyPress in
+          if keyPress.modifiers == .shift
+            && keyPress.key == .return
+          {
+            userMessage += "\n"
+            return .handled
+          } else if keyPress.modifiers.isEmpty && keyPress.key == .return {
+            onSubmit()
+            return .handled
+          } else {
+            return .ignored
+          }
+        }
 
       Divider()
 
       HStack {
-        Picker("Draft with", selection: $selectedDraftApp) {
-          Text("None").tag(nil as DraftApp?)
-
-          ForEach(DraftApp.allCases) { app in
-            Text(app.rawValue).tag(app)
-          }
+        Button(action: {
+          isShowingPopover.toggle()
+        }) {
+          Image(systemName: "car.side.air.fresh")
+            .font(.title2)
+            .foregroundStyle(selectedDraftApp != nil ? .blue : .gray)
         }
-        .pickerStyle(.menu)
-        .frame(maxWidth: 420)
+        .buttonStyle(.plain)
+        .popover(isPresented: $isShowingPopover, arrowEdge: .top) {
+          VStack(alignment: .leading, spacing: 16) {
+            Text("Draft with")
+              .font(.title3)
+
+            ForEach(DraftApp.allCases) { app in
+              let selected = selectedDraftApp == app
+              let isDisabled = selectedDraftApp != nil && !selected
+
+              HStack {
+                HStack(spacing: 8) {
+                  Image(app.name)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 32, height: 32)
+
+                  Text(app.name)
+                    .foregroundStyle(isDisabled ? .gray : .primary)
+                }
+
+                Spacer()
+
+                Button(action: {
+                  if selected {
+                    selectedDraftApp = nil
+                  } else {
+                    selectedDraftApp = app
+                  }
+                }) {
+                  Image(systemName: selected ? "xmark.circle.fill" : "checkmark.circle")
+                    .foregroundStyle(selected ? .red : (isDisabled ? .gray : .blue))
+                    .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .disabled(isDisabled)
+              }
+              .frame(maxWidth: .infinity, alignment: .leading)
+            }
+          }
+          .padding()
+          .frame(minWidth: 200)
+        }
 
         Spacer()
 
@@ -53,7 +111,6 @@ struct ChatBoxView: View {
     .padding()
     .background(Color(.secondarySystemFill))
     .cornerRadius(8)
-    .frame(maxWidth: 960)
   }
 }
 

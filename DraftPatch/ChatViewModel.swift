@@ -12,9 +12,7 @@ enum DraftApp: String, CaseIterable, Identifiable {
   case xcode = "Xcode"
   case emacs = "Emacs"
 
-  var id: String { self.rawValue }
-
-  var identifier: String {
+  var id: String {
     switch self {
     case .xcode:
       return "com.apple.dt.Xcode"
@@ -22,6 +20,8 @@ enum DraftApp: String, CaseIterable, Identifiable {
       return "org.gnu.Emacs"
     }
   }
+
+  var name: String { self.rawValue }
 }
 
 @MainActor
@@ -107,7 +107,7 @@ class DraftPatchViewModel: ObservableObject {
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
-      AccessibilityTextService.shared.getSelectedOrActiveText(appIdentifier: draftApp.identifier)
+      AccessibilityTextService.shared.getSelectedOrActiveText(appIdentifier: draftApp.id)
     }
 
     // Format the message: append selected text if available

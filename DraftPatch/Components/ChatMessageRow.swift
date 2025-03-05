@@ -108,11 +108,11 @@ struct ChatMessageRow: View {
     case .user:
       HStack {
         Spacer()
+
         ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
           .padding()
           .background(Color.accentColor.opacity(0.2))
           .cornerRadius(8)
-          .environmentObject(viewModel)
           .textSelection(.enabled)
       }
 
@@ -122,8 +122,8 @@ struct ChatMessageRow: View {
           .padding()
           .background(Color.gray.opacity(0.2))
           .cornerRadius(8)
-          .environmentObject(viewModel)
           .textSelection(.enabled)
+
         Spacer()
       }
     }
