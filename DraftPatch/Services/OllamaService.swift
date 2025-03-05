@@ -8,7 +8,7 @@
 import Foundation
 
 final class OllamaService {
-  static let shared = OllamaService()
+  @MainActor static let shared = OllamaService()
   private let baseURL = URL(string: "http://localhost:11434")!
 
   // List local models
