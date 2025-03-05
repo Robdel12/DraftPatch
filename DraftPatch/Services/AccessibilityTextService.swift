@@ -7,6 +7,7 @@
 
 import AppKit
 
+@MainActor
 final class AccessibilityTextService: ObservableObject {
   static let shared = AccessibilityTextService()
   @Published var hasAccessibilityPermission: Bool = false
