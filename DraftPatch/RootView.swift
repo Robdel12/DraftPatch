@@ -59,6 +59,7 @@ struct RootView: View {
               }
               .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .padding(.bottom, 6)
             .defaultScrollAnchor(.bottom)
 
             ChatBoxView(
