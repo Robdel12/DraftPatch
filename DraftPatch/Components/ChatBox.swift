@@ -20,7 +20,7 @@ struct ChatBoxView: View {
   var body: some View {
     VStack(spacing: 16) {
       if let app = selectedDraftApp {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 0) {
           HStack(spacing: 8) {
             Image(app.name)
               .resizable()
