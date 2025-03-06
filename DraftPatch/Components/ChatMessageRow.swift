@@ -106,25 +106,23 @@ struct ChatMessageRow: View {
   private func messageBubble(_ msg: ChatMessage) -> some View {
     switch msg.role {
     case .user:
-      HStack {
-        Spacer(minLength: 50)
+      Group {
+        HStack {
+          Spacer(minLength: 150)
 
-        ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
-          .padding()
-          .background(Color.accentColor.opacity(0.2))
-          .cornerRadius(8)
-          .textSelection(.enabled)
+          ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
+            .padding()
+            .background(.gray.opacity(0.1))
+            .cornerRadius(8)
+            .textSelection(.enabled)
+        }
       }
 
     case .assistant, .system:
       HStack {
         ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
           .padding()
-          .background(Color.gray.opacity(0.2))
-          .cornerRadius(8)
           .textSelection(.enabled)
-
-        Spacer(minLength: 50)
       }
     }
   }
