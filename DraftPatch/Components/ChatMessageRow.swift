@@ -107,7 +107,7 @@ struct ChatMessageRow: View {
     switch msg.role {
     case .user:
       HStack {
-        Spacer()
+        Spacer(minLength: 50)
 
         ParsedMessageView(text: msg.text, isStreaming: msg.streaming)
           .padding()
@@ -124,7 +124,7 @@ struct ChatMessageRow: View {
           .cornerRadius(8)
           .textSelection(.enabled)
 
-        Spacer()
+        Spacer(minLength: 50)
       }
     }
   }
