@@ -107,25 +107,37 @@ class DraftPatchViewModel: ObservableObject {
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
-      AccessibilityTextService.shared.getSelectedOrActiveText(appIdentifier: draftApp.id)
+      DraftingSerivce.shared.getSelectedOrActiveText(appIdentifier: draftApp.id)
     }
+
+    // Fetch file extension if a DraftApp is selected
+    let fileExtension = selectedDraftApp.flatMap { draftApp in
+      DraftingSerivce.shared.getCurrentFileExtension(appIdentifier: draftApp.id)
+    }?.replacingOccurrences(of: ".", with: "")
 
     // Format the message: append selected text if available
     let messageText: String
     if let text = text {
       if let selectedText, !selectedText.isEmpty {
+        let ext = fileExtension ?? "txt"
         messageText = """
           \(text)
 
           ---
-
+          ```\(ext)
           \(selectedText)
+          ```
           """
       } else {
         messageText = text
       }
     } else if let selectedText, !selectedText.isEmpty {
-      messageText = selectedText
+      let ext = fileExtension ?? "txt"
+      messageText = """
+        ```\(ext)
+        \(selectedText)
+        ```
+        """
     } else {
       return
     }
@@ -144,7 +156,6 @@ class DraftPatchViewModel: ObservableObject {
 
     let userMsg = ChatMessage(text: messageText, role: .user)
     thread.messages.append(userMsg)
-    saveContext()
 
     let messagesPayload = thread.messages.map { msg -> [String: Any] in
       [
@@ -159,13 +170,20 @@ class DraftPatchViewModel: ObservableObject {
     )
 
     thinking = true
+    saveContext()
 
     let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
     thread.messages.append(assistantMsg)
-    saveContext()
 
     do {
+      var firstLoop = true
+
       for try await partialText in tokenStream {
+        if firstLoop {
+          firstLoop = false
+          thread.updatedAt = Date()
+        }
+
         assistantMsg.text += partialText
         saveContext()
         streamingUpdate = UUID()
@@ -173,7 +191,6 @@ class DraftPatchViewModel: ObservableObject {
 
       // Mark completion
       assistantMsg.streaming = false
-      thread.updatedAt = Date()
       saveContext()
 
       // If it was a brand new conversation, generate a title asynchronously

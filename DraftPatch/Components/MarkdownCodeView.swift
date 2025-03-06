@@ -34,7 +34,6 @@ struct SyntaxHighlightedCodeBlock: View {
         Text(language ?? "Code")
           .font(.system(size: 12, weight: .medium, design: .monospaced))
           .foregroundColor(.white)
-          .padding()
 
         Spacer()
 
@@ -47,14 +46,14 @@ struct SyntaxHighlightedCodeBlock: View {
           .font(.system(size: 12, weight: .medium, design: .monospaced))
         }
         .buttonStyle(BorderlessButtonStyle())
-        .padding()
       }
+      .padding(10)
 
       Divider()
 
       ScrollView(.horizontal) {
         Text(highlightedText)
-          .padding()
+          .padding(10)
           .font(.system(.body, design: .monospaced))
       }
     }

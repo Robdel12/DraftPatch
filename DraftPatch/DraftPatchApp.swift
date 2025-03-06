@@ -34,7 +34,7 @@ struct DraftPatchApp: App {
     _viewModel = StateObject(wrappedValue: DraftPatchViewModel(context: ctx))
 
     // Request accessibility permissions for drafting
-    AccessibilityTextService.shared.checkAccessibilityPermission()
+    DraftingSerivce.shared.checkAccessibilityPermission()
   }
 
   var body: some Scene {

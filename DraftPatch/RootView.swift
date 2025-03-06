@@ -46,19 +46,18 @@ struct RootView: View {
         VStack {
           VStack(spacing: 0) {
             ScrollView {
-              LazyVStack(spacing: 8) {
-                ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
-                  ChatMessageRow(message: msg)
-                    .id(msg.id)
-                    .environmentObject(viewModel)
+              VStack(spacing: 0) {
+                LazyVStack(spacing: 8) {
+                  ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
+                    ChatMessageRow(message: msg)
+                      .id(msg.id)
+                      .environmentObject(viewModel)
+                  }
                 }
-
-                Rectangle()
-                  .fill(Color.clear)
-                  .frame(width: 1, height: 1)
-                  .id("bottom")
+                .padding()
+                .frame(maxWidth: 960)
               }
-              .padding()
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .defaultScrollAnchor(.bottom)
 
@@ -69,10 +68,9 @@ struct RootView: View {
               onSubmit: sendMessage
             )
             .padding(.horizontal)
+            .frame(maxWidth: 960)
           }
-          .frame(maxWidth: 960)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.bottom, 12)
         .background(Color(.black).opacity(0.2))
       } else {
