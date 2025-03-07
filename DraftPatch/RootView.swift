@@ -56,6 +56,7 @@ struct RootView: View {
           }
         }
         .buttonStyle(.plain)
+        .keyboardShortcut(",", modifiers: .command)
       }
       .padding()
       .frame(maxWidth: .infinity, alignment: .leading)
