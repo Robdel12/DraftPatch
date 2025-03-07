@@ -33,8 +33,9 @@ class DraftPatchViewModel: ObservableObject {
 
   init(context: ModelContext) {
     self.context = context
-    loadThreads()
+
     loadSettings()
+    loadThreads()
 
     Task {
       await loadLocalModels()
