@@ -14,7 +14,7 @@ class ChatThread: ObservableObject {
   var title: String
   var createdAt: Date
   var updatedAt: Date
-  var modelName: String
+  var model: ChatModel
   var messages: [ChatMessage] {
     didSet {
       updatedAt = Date()
@@ -26,14 +26,14 @@ class ChatThread: ObservableObject {
     title: String,
     createdAt: Date = Date(),
     updatedAt: Date = Date(),
-    modelName: String,
+    model: ChatModel,
     messages: [ChatMessage] = []
   ) {
     self.id = id
     self.title = title
     self.createdAt = createdAt
     self.updatedAt = updatedAt
-    self.modelName = modelName
+    self.model = model
     self.messages = messages
   }
 }

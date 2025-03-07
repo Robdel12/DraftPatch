@@ -10,9 +10,9 @@ import SwiftUI
 
 struct RootView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
-  @State private var userMessage = ""
-
   @FocusState var isTextFieldFocused: Bool
+
+  @State private var showSettings: Bool = false
 
   var body: some View {
     NavigationSplitView {
@@ -26,7 +26,7 @@ struct RootView: View {
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                  thread == viewModel.selectedThread
+                  thread == viewModel.selectedThread && !showSettings
                     ? Color.accentColor.opacity(0.2)
                     : Color.clear
                 )
@@ -43,97 +43,60 @@ struct RootView: View {
           }
         }
       }
-    } detail: {
-      if let thread = viewModel.selectedThread {
-        VStack {
-          VStack(spacing: 0) {
-            ScrollView {
-              VStack(spacing: 0) {
-                LazyVStack(spacing: 8) {
-                  ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
-                    ChatMessageRow(message: msg)
-                      .id(msg.id)
-                      .environmentObject(viewModel)
-                      .frame(maxWidth: .infinity, alignment: .leading)
-                  }
-                }
-                .padding()
-                .frame(maxWidth: 960)
-              }
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .defaultScrollAnchor(.bottom)
 
-            ChatBoxView(
-              userMessage: $userMessage,
-              selectedDraftApp: $viewModel.selectedDraftApp,
-              isTextFieldFocused: $isTextFieldFocused,
-              thinking: viewModel.thinking,
-              onSubmit: sendMessage
-            )
-            .padding(.horizontal)
-            .frame(maxWidth: 960)
+      Spacer()
+
+      VStack {
+        Button {
+          showSettings.toggle()
+        } label: {
+          HStack {
+            Image(systemName: "gear")
+            Text("Settings")
           }
         }
-        .padding(.bottom, 12)
-        .background(Color(.black).opacity(0.2))
-      } else {
-        VStack(spacing: 16) {
-          Image(systemName: "flag.checkered")
-            .resizable()
-            .scaledToFit()
-            .frame(width: 80, height: 80)
-            .foregroundStyle(.secondary)
-
-          Text("No chat selected")
-            .font(.title2)
-            .bold()
-
-          Text("Select a chat and start drafting!")
-            .multilineTextAlignment(.center)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.black).opacity(0.1))
+        .buttonStyle(.plain)
+      }
+      .padding()
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .background(showSettings ? Color.accentColor.opacity(0.2) : Color.clear)
+    } detail: {
+      NavigationStack {
+        ChatView(isTextFieldFocused: $isTextFieldFocused)
+          .environmentObject(viewModel)
+          .navigationDestination(isPresented: $showSettings) {
+            SettingsView()
+          }
       }
     }
     .navigationTitle("")
     .toolbar {
       ToolbarItem(placement: .navigation) {
-        if let thread = viewModel.selectedThread {
+        if let thread = viewModel.selectedThread, !showSettings {
           RenamableTitleView(thread: thread)
         }
       }
 
-      ToolbarItem(placement: .automatic) {
-        Picker("Model", selection: $viewModel.selectedModelName) {
-          ForEach(viewModel.availableModels, id: \.self) { model in
-            Text(model)
+      if !showSettings {
+        ToolbarItem(placement: .automatic) {
+          Picker("Model", selection: $viewModel.selectedModel) {
+            ForEach(viewModel.availableModels, id: \.id) { model in
+              Text(model.name).tag(model)
+            }
           }
+          .pickerStyle(.menu)
         }
-        .pickerStyle(.menu)
-      }
 
-      ToolbarItem(placement: .primaryAction) {
-        Button {
-          viewModel.createDraftThread(title: "New Conversation")
-          isTextFieldFocused = true
-        } label: {
-          Label("New Chat", systemImage: "highlighter")
+        ToolbarItem(placement: .primaryAction) {
+          Button {
+            viewModel.createDraftThread(title: "New Conversation")
+            isTextFieldFocused = true
+          } label: {
+            Label("New Chat", systemImage: "highlighter")
+          }
+          .keyboardShortcut("n", modifiers: .command)
         }
-        .keyboardShortcut("n", modifiers: .command)
       }
     }
-  }
-
-  private func sendMessage() {
-    let textToSend = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !textToSend.isEmpty else { return }
-
-    Task {
-      await viewModel.sendMessage(textToSend)
-    }
-    userMessage = ""
   }
 }

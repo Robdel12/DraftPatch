@@ -11,7 +11,7 @@ struct OpenAIService: LLMService {
   @MainActor static let shared = OpenAIService()
 
   let endpointURL: URL = URL(string: "https://api.openai.com/v1")!
-  let apiKey: String? = ""
+  let apiKey: String? = KeychainHelper.shared.load(for: "openai_api_key") ?? ""
 
   func fetchAvailableModels() async throws -> [String] {
     let url = endpointURL.appendingPathComponent("models")
@@ -62,7 +62,6 @@ struct OpenAIService: LLMService {
           guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             throw URLError(.badServerResponse)
           }
-          print("streaming...? \(httpResponse.statusCode)")
 
           for try await line in stream.lines {
             guard line.hasPrefix("data: ") else {

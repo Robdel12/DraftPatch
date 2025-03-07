@@ -18,12 +18,16 @@ struct DraftPatchApp: App {
       let schema = Schema([
         ChatThread.self,
         ChatMessage.self,
+        Settings.self,
       ])
 
-      let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+      let configuration = ModelConfiguration(
+        schema: schema,
+        isStoredInMemoryOnly: false
+      )
 
       self.modelContainer = try ModelContainer(
-        for: ChatThread.self, ChatMessage.self,
+        for: ChatThread.self, ChatMessage.self, Settings.self,
         configurations: configuration
       )
     } catch {

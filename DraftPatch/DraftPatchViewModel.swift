@@ -8,22 +8,6 @@
 import SwiftData
 import SwiftUI
 
-enum DraftApp: String, CaseIterable, Identifiable {
-  case xcode = "Xcode"
-  case emacs = "Emacs"
-
-  var id: String {
-    switch self {
-    case .xcode:
-      return "com.apple.dt.Xcode"
-    case .emacs:
-      return "org.gnu.Emacs"
-    }
-  }
-
-  var name: String { self.rawValue }
-}
-
 @MainActor
 class DraftPatchViewModel: ObservableObject {
   private var context: ModelContext
@@ -31,26 +15,30 @@ class DraftPatchViewModel: ObservableObject {
   @Published var chatThreads: [ChatThread] = []
   @Published var selectedThread: ChatThread? {
     didSet {
-      if let model = selectedThread?.modelName {
-        selectedModelName = model
+      if let model = selectedThread?.model {
+        selectedModel = model
       }
     }
   }
   @Published var draftThread: ChatThread? = nil
-  @Published var availableModels: [String] = []
-  @Published var selectedModelName: String = ""
+  @Published var availableModels: [ChatModel] = []
+  @Published var selectedModel: ChatModel = ChatModel(name: "Default", provider: .ollama)
   @Published var thinking: Bool = false
   @Published var visibleScrollHeight: CGFloat = 0
   @Published var streamingUpdate: UUID = UUID()
 
   @Published var isDraftingEnabled: Bool = false
   @Published var selectedDraftApp: DraftApp? = nil
+  @Published var settings: Settings? = nil
 
   init(context: ModelContext) {
     self.context = context
     loadThreads()
+    loadSettings()
+
     Task {
       await loadLocalModels()
+      await loadOpenAIModels()
     }
   }
 
@@ -65,15 +53,26 @@ class DraftPatchViewModel: ObservableObject {
   func loadLocalModels() async {
     do {
       let models = try await OllamaService.shared.fetchAvailableModels()
-      self.availableModels = models
+      self.availableModels = models.map { ChatModel(name: $0, provider: .ollama) }
 
-      if let firstModel = models.first {
-        self.selectedModelName = firstModel
-      } else {
-        self.selectedModelName = "No Models Found"
+      if let firstModel = availableModels.first {
+        self.selectedModel = firstModel
       }
     } catch {
-      print("Error loading models: \(error)")
+      print("Error loading Ollama models: \(error)")
+    }
+  }
+
+  func loadOpenAIModels() async {
+    guard settings?.isOpenAIEnabled ?? false else { return }
+
+    do {
+      let models = try await OpenAIService.shared.fetchAvailableModels()
+      let openAIModels = models.map { ChatModel(name: $0, provider: .openai) }
+
+      self.availableModels += openAIModels
+    } catch {
+      print("Error loading OpenAI models: \(error)")
     }
   }
 
@@ -81,9 +80,10 @@ class DraftPatchViewModel: ObservableObject {
     let descriptor = FetchDescriptor<ChatThread>(
       sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
     )
+
     do {
       chatThreads = try context.fetch(descriptor)
-      selectedThread = chatThreads.sorted(by: { $0.updatedAt > $1.updatedAt }).first
+      selectedThread = chatThreads.first
     } catch {
       print("Error loading threads: \(error)")
       chatThreads = []
@@ -91,10 +91,23 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
 
+  private func loadSettings() {
+    let descriptor = FetchDescriptor<Settings>()
+
+    do {
+      settings = try context.fetch(descriptor).first
+    } catch {
+      print("Error loading settings: \(error)")
+    }
+  }
+
   /// Create a new ephemeral thread in memory, but do **not** persist it yet.
   func createDraftThread(title: String) {
-    let defaultModel = availableModels.first ?? "llama3.2"
-    let thread = ChatThread(title: title, modelName: defaultModel)
+    let defaultModel = availableModels.first
+    let thread = ChatThread(
+      title: title,
+      model: defaultModel ?? ChatModel(name: "Default", provider: .ollama)
+    )
     draftThread = thread
     selectedThread = draftThread
   }
@@ -103,7 +116,7 @@ class DraftPatchViewModel: ObservableObject {
   /// we insert that draft into the context before persisting the message.
   func sendMessage(_ text: String? = nil) async {
     guard let thread = selectedThread else { return }
-    thread.modelName = selectedModelName
+    thread.model = selectedModel
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
@@ -161,53 +174,44 @@ class DraftPatchViewModel: ObservableObject {
       ChatMessagePayload(role: msg.role, content: msg.text)
     }
 
-    let tokenStream = OllamaService.shared.streamChat(
-      messages: messagesPayload,
-      modelName: thread.modelName
-    )
-
-    thinking = true
-    saveContext()
-
-    let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
-    thread.messages.append(assistantMsg)
-
-    do {
-      var firstLoop = true
-
-      for try await partialText in tokenStream {
-        if firstLoop {
-          firstLoop = false
-          thread.updatedAt = Date()
-        }
-
-        assistantMsg.text += partialText
-        streamingUpdate = UUID()
-      }
-
-      // Mark completion
-      assistantMsg.streaming = false
+    if let tokenStream = getTokenStream(for: thread, with: messagesPayload) {
+      thinking = true
       saveContext()
 
-      // If it was a new conversation, generate a title asynchronously
-      if thread.title == "New Conversation" {
-        do {
-          let title = try await OllamaService.shared.generateTitle(
-            for: messageText,
-            modelName: thread.modelName
-          )
+      let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
+      thread.messages.append(assistantMsg)
 
-          thread.title = title
-          saveContext()
-        } catch {
-          print("Error generating thread title: \(error)")
+      do {
+        var firstLoop = true
+
+        for try await partialText in tokenStream {
+          if firstLoop {
+            firstLoop = false
+            thread.updatedAt = Date()
+          }
+
+          assistantMsg.text += partialText
+          streamingUpdate = UUID()
         }
-      }
-    } catch {
-      print("Error during streaming: \(error)")
-    }
 
-    thinking = false
+        assistantMsg.streaming = false
+        saveContext()
+
+        if thread.title == "New Conversation" {
+          do {
+            let title = try await generateTitle(for: messageText, using: thread.model)
+            thread.title = title
+            saveContext()
+          } catch {
+            print("Error generating thread title: \(error)")
+          }
+        }
+      } catch {
+        print("Error during streaming: \(error)")
+      }
+
+      thinking = false
+    }
   }
 
   private func saveContext() {
@@ -234,6 +238,34 @@ class DraftPatchViewModel: ObservableObject {
       }
     } catch {
       print("Error deleting thread: \(error)")
+    }
+  }
+
+  /// Determines the correct service and returns a token stream.
+  private func getTokenStream(for thread: ChatThread, with messages: [ChatMessagePayload])
+    -> AsyncThrowingStream<String, Error>?
+  {
+    switch thread.model.provider {
+    case .ollama:
+      return OllamaService.shared.streamChat(
+        messages: messages,
+        modelName: thread.model.name
+      )
+    case .openai:
+      return OpenAIService.shared.streamChat(
+        messages: messages,
+        modelName: thread.model.name
+      )
+    }
+  }
+
+  /// Calls the appropriate service to generate a title based on the provider.
+  private func generateTitle(for text: String, using model: ChatModel) async throws -> String {
+    switch model.provider {
+    case .ollama:
+      return try await OllamaService.shared.generateTitle(for: text, modelName: model.name)
+    case .openai:
+      return try await OpenAIService.shared.generateTitle(for: text, modelName: model.name)
     }
   }
 }
