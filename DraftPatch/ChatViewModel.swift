@@ -93,17 +93,11 @@ class DraftPatchViewModel: ObservableObject {
     selectedThread = draftThread
   }
 
-  // Change the model for the currently selected thread
-  func setModelForCurrentThread(_ modelName: String) {
-    guard let thread = selectedThread else { return }
-    thread.modelName = modelName
-    saveContext()
-  }
-
   /// Handle sending a message. If we’re currently working with a draft,
   /// we insert that draft into the context before persisting the message.
   func sendMessage(_ text: String? = nil) async {
     guard let thread = selectedThread else { return }
+    thread.modelName = selectedModelName
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
