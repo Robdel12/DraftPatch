@@ -29,7 +29,13 @@ class DraftPatchViewModel: ObservableObject {
   private var context: ModelContext
 
   @Published var chatThreads: [ChatThread] = []
-  @Published var selectedThread: ChatThread?
+  @Published var selectedThread: ChatThread? {
+    didSet {
+      if let model = selectedThread?.modelName {
+        selectedModelName = model
+      }
+    }
+  }
   @Published var draftThread: ChatThread? = nil
   @Published var availableModels: [String] = []
   @Published var selectedModelName: String = ""
