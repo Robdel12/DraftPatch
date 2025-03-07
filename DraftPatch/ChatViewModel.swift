@@ -50,6 +50,7 @@ class DraftPatchViewModel: ObservableObject {
 
   func toggleDrafting() {
     isDraftingEnabled.toggle()
+
     if !isDraftingEnabled {
       selectedDraftApp = nil
     }
@@ -89,7 +90,6 @@ class DraftPatchViewModel: ObservableObject {
     let defaultModel = availableModels.first ?? "llama3.2"
     let thread = ChatThread(title: title, modelName: defaultModel)
     draftThread = thread
-
     selectedThread = draftThread
   }
 
@@ -117,7 +117,7 @@ class DraftPatchViewModel: ObservableObject {
 
     // Format the message: append selected text if available
     let messageText: String
-    if let text = text {
+    if let text = text, !text.isEmpty {
       if let selectedText, !selectedText.isEmpty {
         let ext = fileExtension ?? "txt"
         messageText = """
@@ -157,11 +157,8 @@ class DraftPatchViewModel: ObservableObject {
     let userMsg = ChatMessage(text: messageText, role: .user)
     thread.messages.append(userMsg)
 
-    let messagesPayload = thread.messages.map { msg -> [String: Any] in
-      [
-        "role": msg.role.rawValue,
-        "content": msg.text,
-      ]
+    let messagesPayload = thread.messages.map { msg in
+      ChatMessagePayload(role: msg.role, content: msg.text)
     }
 
     let tokenStream = OllamaService.shared.streamChat(
@@ -185,7 +182,6 @@ class DraftPatchViewModel: ObservableObject {
         }
 
         assistantMsg.text += partialText
-        saveContext()
         streamingUpdate = UUID()
       }
 
@@ -193,13 +189,14 @@ class DraftPatchViewModel: ObservableObject {
       assistantMsg.streaming = false
       saveContext()
 
-      // If it was a brand new conversation, generate a title asynchronously
+      // If it was a new conversation, generate a title asynchronously
       if thread.title == "New Conversation" {
         do {
           let title = try await OllamaService.shared.generateTitle(
             for: messageText,
             modelName: thread.modelName
           )
+
           thread.title = title
           saveContext()
         } catch {
@@ -208,9 +205,6 @@ class DraftPatchViewModel: ObservableObject {
       }
     } catch {
       print("Error during streaming: \(error)")
-      thinking = false
-      assistantMsg.streaming = false
-      saveContext()
     }
 
     thinking = false

@@ -7,14 +7,14 @@
 
 import Foundation
 
-final class OllamaService {
+final class OllamaService: LLMService {
   @MainActor static let shared = OllamaService()
-  private let baseURL = URL(string: "http://localhost:11434")!
 
-  // List local models
-  // GET /api/tags => { "models": [{ "name": "llama3.2", ... }, ...] }
+  var endpointURL = URL(string: "http://localhost:11434")!
+  var apiKey: String? = nil  // Ollama doesn't require an API key.
+
   func fetchAvailableModels() async throws -> [String] {
-    let url = baseURL.appendingPathComponent("api/tags")
+    let url = endpointURL.appendingPathComponent("api/tags")
     let (data, _) = try await URLSession.shared.data(from: url)
 
     guard
@@ -23,36 +23,40 @@ final class OllamaService {
     else {
       return []
     }
+
     return models.compactMap { $0["name"] as? String }
   }
 
-  // Generate a title for the chat thread based on the user's first message
-  func generateTitle(for message: String, modelName: String) async throws -> String {
-    let url = baseURL.appendingPathComponent("api/generate")
+  func singleChatCompletion(
+    message: String,
+    modelName: String,
+    systemPrompt: String? = nil
+  ) async throws -> String {
+    let url = endpointURL.appendingPathComponent("api/chat")
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    let prompt = """
-      Summarize the following message into a short title (5 words or less). \
-      Do not include quotes or punctuation. Only output the final short title. \
-      Do not quote it. The output will be used for a coversation title.
-
-      \(message)
-      """
+    var messagesPayload: [[String: Any]] = []
+    if let systemPrompt {
+      messagesPayload.append(["role": "system", "content": systemPrompt])
+    }
+    messagesPayload.append(["role": "user", "content": message])
 
     let payload: [String: Any] = [
       "model": modelName,
-      "prompt": prompt,
+      "messages": messagesPayload,
       "stream": false,
     ]
 
     request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
     let (data, _) = try await URLSession.shared.data(for: request)
+
     guard
       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let rawTitle = json["response"] as? String
+      let messageObj = json["message"] as? [String: Any],
+      let content = messageObj["content"] as? String
     else {
       throw NSError(
         domain: "OllamaService",
@@ -61,33 +65,31 @@ final class OllamaService {
       )
     }
 
-    var cleanedTitle = rawTitle.replacingOccurrences(
-      of: "<think>[\\s\\S]*?</think>",
-      with: "",
-      options: .regularExpression
-    )
-
-    cleanedTitle =
-      cleanedTitle
-      .replacingOccurrences(of: "[\"'.,!?;:]", with: "", options: .regularExpression)
-      .trimmingCharacters(in: .whitespacesAndNewlines)
-
-    return cleanedTitle
+    return content.trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  // POST /api/chat => streaming
-  func streamChat(messages: [[String: Any]], modelName: String) -> AsyncThrowingStream<String, Error> {
+  func streamChat(
+    messages: [ChatMessagePayload],
+    modelName: String
+  ) -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
       Task {
         do {
-          let url = baseURL.appendingPathComponent("api/chat")
+          let url = endpointURL.appendingPathComponent("api/chat")
           var request = URLRequest(url: url)
           request.httpMethod = "POST"
           request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
+          let messagesPayload = messages.map { message in
+            [
+              "role": message.role.rawValue,
+              "content": message.content,
+            ]
+          }
+
           let payload: [String: Any] = [
             "model": modelName,
-            "messages": messages,
+            "messages": messagesPayload,
             "stream": true,
           ]
 
@@ -96,27 +98,21 @@ final class OllamaService {
           let (stream, _) = try await URLSession.shared.bytes(for: request)
 
           for try await line in stream.lines {
-            guard let data = line.data(using: .utf8) else {
+            guard let data = line.data(using: .utf8), !data.isEmpty else {
               continue
             }
 
-            do {
-              let chunk = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if let chunk = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let messageObj = chunk["message"] as? [String: Any],
+              let partialText = messageObj["content"] as? String,
+              !partialText.isEmpty
+            {
+              continuation.yield(partialText)
 
-              if let messageObj = chunk?["message"] as? [String: Any],
-                let partialText = messageObj["content"] as? String,
-                !partialText.isEmpty
-              {
-                continuation.yield(partialText)
-              }
-
-              if let done = chunk?["done"] as? Bool, done {
+              if let done = chunk["done"] as? Bool, done {
                 continuation.finish()
                 return
               }
-            } catch {
-              continuation.finish(throwing: error)
-              return
             }
           }
 

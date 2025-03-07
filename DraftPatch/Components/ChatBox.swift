@@ -10,11 +10,11 @@ import SwiftUI
 struct ChatBoxView: View {
   @Binding var userMessage: String
   @Binding var selectedDraftApp: DraftApp?
+  @FocusState.Binding var isTextFieldFocused: Bool
 
   let thinking: Bool
   let onSubmit: () -> Void
 
-  @FocusState private var isTextFieldFocused: Bool
   @State private var isShowingPopover = false
 
   var body: some View {
@@ -97,79 +97,5 @@ struct ChatBoxView: View {
     .padding()
     .background(Color(.secondarySystemFill))
     .cornerRadius(8)
-  }
-}
-
-// MARK: - Preview
-struct ChatBoxView_Previews: PreviewProvider {
-  struct PreviewWrapper: View {
-    @State private var userMessage = "eweweewe"
-    @State private var selectedDraftApp: DraftApp? = nil
-
-    var body: some View {
-      ChatBoxView(
-        userMessage: $userMessage,
-        selectedDraftApp: $selectedDraftApp,
-        thinking: false
-      ) {
-        print("Submit tapped")
-      }
-      .padding()
-      .previewLayout(.sizeThatFits)
-    }
-  }
-
-  static var previews: some View {
-    PreviewWrapper()
-  }
-}
-
-struct DraftingPopover: View {
-  @Binding var selectedDraftApp: DraftApp?
-  @Binding var isShowingPopover: Bool
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Draft with")
-        .font(.title3)
-
-      ForEach(DraftApp.allCases) { app in
-        let selected = selectedDraftApp == app
-        let isDisabled = selectedDraftApp != nil && !selected
-
-        HStack {
-          HStack(spacing: 8) {
-            Image(app.name)
-              .resizable()
-              .scaledToFit()
-              .frame(width: 32, height: 32)
-
-            Text(app.name)
-              .foregroundStyle(isDisabled ? .gray : .primary)
-          }
-
-          Spacer()
-
-          Button(action: {
-            if selected {
-              selectedDraftApp = nil
-            } else {
-              selectedDraftApp = app
-            }
-
-            isShowingPopover = false
-          }) {
-            Image(systemName: selected ? "xmark.circle.fill" : "checkmark.circle")
-              .foregroundStyle(selected ? .red : (isDisabled ? .gray : .blue))
-              .font(.title3)
-          }
-          .buttonStyle(.plain)
-          .disabled(isDisabled)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-      }
-    }
-    .padding()
-    .frame(minWidth: 200)
   }
 }
