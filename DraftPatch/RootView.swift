@@ -12,6 +12,8 @@ struct RootView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
   @State private var userMessage = ""
 
+  @FocusState var isTextFieldFocused: Bool
+
   var body: some View {
     NavigationSplitView {
       List {
@@ -64,6 +66,7 @@ struct RootView: View {
             ChatBoxView(
               userMessage: $userMessage,
               selectedDraftApp: $viewModel.selectedDraftApp,
+              isTextFieldFocused: $isTextFieldFocused,
               thinking: viewModel.thinking,
               onSubmit: sendMessage
             )
@@ -114,6 +117,7 @@ struct RootView: View {
       ToolbarItem(placement: .primaryAction) {
         Button {
           viewModel.createDraftThread(title: "New Conversation")
+          isTextFieldFocused = true
         } label: {
           Label("New Chat", systemImage: "highlighter")
         }

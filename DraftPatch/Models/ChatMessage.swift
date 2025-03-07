@@ -8,14 +8,14 @@
 import Foundation
 import SwiftData
 
+enum Role: String, Codable {
+  case user = "user"
+  case assistant = "assistant"
+  case system = "system"
+}
+
 @Model
 class ChatMessage: Equatable {
-  enum Role: String, Codable {
-    case user
-    case assistant
-    case system
-  }
-
   @Attribute(.unique) var id: UUID
   var text: String
   var role: Role
