@@ -54,6 +54,7 @@ struct RootView: View {
                     ChatMessageRow(message: msg)
                       .id(msg.id)
                       .environmentObject(viewModel)
+                      .frame(maxWidth: .infinity, alignment: .leading)
                   }
                 }
                 .padding()
