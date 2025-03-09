@@ -18,7 +18,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
           ScrollView {
             VStack(spacing: 0) {
-              LazyVStack(spacing: 8) {
+              VStack(spacing: 8) {
                 ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
                   ChatMessageRow(message: msg)
                     .id(msg.id)
@@ -38,7 +38,8 @@ struct ChatView: View {
             selectedDraftApp: $viewModel.selectedDraftApp,
             isTextFieldFocused: $isTextFieldFocused,
             thinking: viewModel.thinking,
-            onSubmit: sendMessage
+            onSubmit: sendMessage,
+            draftWithLastApp: viewModel.toggleDraftWithLastApp
           )
           .padding(.horizontal)
           .frame(maxWidth: 960)

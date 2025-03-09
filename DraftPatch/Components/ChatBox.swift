@@ -14,6 +14,7 @@ struct ChatBoxView: View {
 
   let thinking: Bool
   let onSubmit: () -> Void
+  let draftWithLastApp: () -> Void
 
   @State private var isShowingPopover = false
 
@@ -81,6 +82,16 @@ struct ChatBoxView: View {
         .popover(isPresented: $isShowingPopover, arrowEdge: .top) {
           DraftingPopover(selectedDraftApp: $selectedDraftApp, isShowingPopover: $isShowingPopover)
         }
+
+        Button(action: {
+          draftWithLastApp()
+        }) {
+          EmptyView()
+        }
+        .keyboardShortcut("d", modifiers: .command)
+        .accessibilityLabel("Draft with Last App")
+        .accessibilityHint("Activates the draft with the last used app")
+        .buttonStyle(.borderless)
 
         Spacer()
 

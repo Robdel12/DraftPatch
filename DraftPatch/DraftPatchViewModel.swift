@@ -28,7 +28,13 @@ class DraftPatchViewModel: ObservableObject {
   @Published var streamingUpdate: UUID = UUID()
 
   @Published var isDraftingEnabled: Bool = false
-  @Published var selectedDraftApp: DraftApp? = nil
+  @Published var selectedDraftApp: DraftApp? = nil {
+    didSet {
+      if let appSettings = settings, selectedDraftApp != nil {
+        appSettings.lastAppDraftedWith = selectedDraftApp
+      }
+    }
+  }
   @Published var settings: Settings? = nil
 
   init(context: ModelContext) {
@@ -113,6 +119,18 @@ class DraftPatchViewModel: ObservableObject {
       settings = try context.fetch(descriptor).first
     } catch {
       print("Error loading settings: \(error)")
+    }
+  }
+
+  func toggleDraftWithLastApp() {
+    if let lastAppDraftedWith = settings?.lastAppDraftedWith {
+      if isDraftingEnabled {
+        isDraftingEnabled = false
+        selectedDraftApp = nil
+      } else {
+        isDraftingEnabled = true
+        selectedDraftApp = lastAppDraftedWith
+      }
     }
   }
 

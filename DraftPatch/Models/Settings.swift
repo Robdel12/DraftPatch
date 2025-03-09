@@ -13,6 +13,7 @@ class Settings {
   @Attribute(.unique) var id: UUID?
 
   var defaultModel: ChatModel? = nil
+  var lastAppDraftedWith: DraftApp? = nil
 
   var isOpenAIEnabled: Bool = false
   var openAIAPIKeyIdentifier: String?
