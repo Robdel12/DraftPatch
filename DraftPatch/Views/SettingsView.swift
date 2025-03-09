@@ -10,11 +10,12 @@ import SwiftUI
 
 struct SettingsView: View {
   @Environment(\.modelContext) private var modelContext
+  @EnvironmentObject private var viewModel: DraftPatchViewModel
   @Query private var settings: [Settings]
 
+  @State private var selectedDefaultModel: ChatModel?
   @State private var isOpenAIEnabled: Bool = false
   @State private var openAIApiKey: String = ""
-
   @State private var isGeminiEnabled: Bool = false
   @State private var geminiApiKey: String = ""
 
@@ -29,49 +30,51 @@ struct SettingsView: View {
 
       Divider()
 
-      Text("LLM Settings")
+      Text("Default Chat Model")
+        .font(.title3)
+        .bold()
+
+      Picker("Select Default Model", selection: $selectedDefaultModel) {
+        Text("None").tag(nil as ChatModel?)
+        ForEach(viewModel.availableModels) { model in
+          Text(model.name).tag(model as ChatModel?)
+        }
+      }
+      .frame(maxWidth: 420)
+
+      Text("OpenAI Settings")
         .font(.title3)
         .bold()
 
       Toggle("Enable OpenAI", isOn: $isOpenAIEnabled)
-        .onChange(of: isOpenAIEnabled) {
-          updateSettings()
-        }
 
       if isOpenAIEnabled {
         SecureField("Enter OpenAI API Key", text: $openAIApiKey)
           .textFieldStyle(RoundedBorderTextFieldStyle())
           .padding(.vertical, 5)
           .frame(maxWidth: 420)
-
-        Button("Save OpenAI API Key") {
-          KeychainHelper.shared.save(
-            openAIApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: openAIApiKeyIdentifier)
-          updateSettings()
-        }
-        .buttonStyle(.bordered)
       }
 
+      Text("Gemini Settings")
+        .font(.title3)
+        .bold()
+
       Toggle("Enable Gemini", isOn: $isGeminiEnabled)
-        .onChange(of: isGeminiEnabled) {
-          updateSettings()
-        }
 
       if isGeminiEnabled {
         SecureField("Enter Gemini API Key", text: $geminiApiKey)
           .textFieldStyle(RoundedBorderTextFieldStyle())
           .padding(.vertical, 5)
           .frame(maxWidth: 420)
-
-        Button("Save Gemini API Key") {
-          KeychainHelper.shared.save(
-            geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: geminiApiKeyIdentifier)
-          updateSettings()
-        }
-        .buttonStyle(.bordered)
       }
 
+      Button("Save Settings") {
+        saveSettings()
+      }
+      .buttonStyle(.bordered)
+
       Spacer()
+
       HStack {
         Spacer()
         Text("Made with ❤️ and 🤔 by Robert DeLuca")
@@ -92,6 +95,12 @@ struct SettingsView: View {
       openAIApiKey = KeychainHelper.shared.load(for: openAIApiKeyIdentifier) ?? ""
       isGeminiEnabled = existingSettings.isGeminiEnabled
       geminiApiKey = KeychainHelper.shared.load(for: geminiApiKeyIdentifier) ?? ""
+
+      if let defaultModel = existingSettings.defaultModel,
+        let defaultModel = viewModel.availableModels.first(where: { $0.name == defaultModel.name })
+      {
+        selectedDefaultModel = defaultModel
+      }
     } else {
       let newSettings = Settings(
         isOpenAIEnabled: false,
@@ -103,12 +112,20 @@ struct SettingsView: View {
     }
   }
 
-  private func updateSettings() {
+  private func saveSettings() {
+    KeychainHelper.shared.save(
+      openAIApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: openAIApiKeyIdentifier)
+    KeychainHelper.shared.save(
+      geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: geminiApiKeyIdentifier)
+
     if let existingSettings = settings.first {
       existingSettings.isOpenAIEnabled = isOpenAIEnabled
-      existingSettings.openAIAPIKeyIdentifier = openAIApiKeyIdentifier
       existingSettings.isGeminiEnabled = isGeminiEnabled
-      existingSettings.geminiAPIKeyIdentifier = geminiApiKeyIdentifier
+      if let selectedModel = selectedDefaultModel {
+        existingSettings.defaultModel = selectedModel
+      } else {
+        existingSettings.defaultModel = nil
+      }
     }
   }
 }

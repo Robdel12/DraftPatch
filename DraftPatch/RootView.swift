@@ -67,6 +67,7 @@ struct RootView: View {
           .environmentObject(viewModel)
           .navigationDestination(isPresented: $showSettings) {
             SettingsView()
+              .environmentObject(viewModel)
           }
       }
     }

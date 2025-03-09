@@ -12,7 +12,7 @@ import SwiftData
 class Settings {
   @Attribute(.unique) var id: UUID?
 
-  var defaultModel: String = ""
+  var defaultModel: ChatModel? = nil
 
   var isOpenAIEnabled: Bool = false
   var openAIAPIKeyIdentifier: String?

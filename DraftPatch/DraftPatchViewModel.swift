@@ -118,7 +118,7 @@ class DraftPatchViewModel: ObservableObject {
 
   /// Create a new ephemeral thread in memory, but do **not** persist it yet.
   func createDraftThread(title: String) {
-    let defaultModel = availableModels.first
+    let defaultModel = settings?.defaultModel
     let thread = ChatThread(
       title: title,
       model: defaultModel ?? ChatModel(name: "Default", provider: .ollama)
