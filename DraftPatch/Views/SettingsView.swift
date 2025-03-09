@@ -13,14 +13,24 @@ struct SettingsView: View {
   @Query private var settings: [Settings]
 
   @State private var isOpenAIEnabled: Bool = false
-  @State private var apiKey: String = ""
+  @State private var openAIApiKey: String = ""
 
-  private let apiKeyIdentifier = "openai_api_key"
+  @State private var isGeminiEnabled: Bool = false
+  @State private var geminiApiKey: String = ""
+
+  private let openAIApiKeyIdentifier = "openai_api_key"
+  private let geminiApiKeyIdentifier = "gemini_api_key"
 
   var body: some View {
     VStack(alignment: .leading, spacing: 20) {
       Text("Settings")
         .font(.largeTitle)
+        .bold()
+
+      Divider()
+
+      Text("LLM Settings")
+        .font(.title3)
         .bold()
 
       Toggle("Enable OpenAI", isOn: $isOpenAIEnabled)
@@ -29,12 +39,33 @@ struct SettingsView: View {
         }
 
       if isOpenAIEnabled {
-        SecureField("Enter OpenAI API Key", text: $apiKey)
+        SecureField("Enter OpenAI API Key", text: $openAIApiKey)
           .textFieldStyle(RoundedBorderTextFieldStyle())
           .padding(.vertical, 5)
+          .frame(maxWidth: 420)
 
-        Button("Save API Key") {
-          KeychainHelper.shared.save(apiKey, for: apiKeyIdentifier)
+        Button("Save OpenAI API Key") {
+          KeychainHelper.shared.save(
+            openAIApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: openAIApiKeyIdentifier)
+          updateSettings()
+        }
+        .buttonStyle(.bordered)
+      }
+
+      Toggle("Enable Gemini", isOn: $isGeminiEnabled)
+        .onChange(of: isGeminiEnabled) {
+          updateSettings()
+        }
+
+      if isGeminiEnabled {
+        SecureField("Enter Gemini API Key", text: $geminiApiKey)
+          .textFieldStyle(RoundedBorderTextFieldStyle())
+          .padding(.vertical, 5)
+          .frame(maxWidth: 420)
+
+        Button("Save Gemini API Key") {
+          KeychainHelper.shared.save(
+            geminiApiKey.trimmingCharacters(in: .whitespacesAndNewlines), for: geminiApiKeyIdentifier)
           updateSettings()
         }
         .buttonStyle(.bordered)
@@ -58,9 +89,16 @@ struct SettingsView: View {
   private func loadSettings() {
     if let existingSettings = settings.first {
       isOpenAIEnabled = existingSettings.isOpenAIEnabled
-      apiKey = KeychainHelper.shared.load(for: apiKeyIdentifier) ?? ""
+      openAIApiKey = KeychainHelper.shared.load(for: openAIApiKeyIdentifier) ?? ""
+      isGeminiEnabled = existingSettings.isGeminiEnabled
+      geminiApiKey = KeychainHelper.shared.load(for: geminiApiKeyIdentifier) ?? ""
     } else {
-      let newSettings = Settings(isOpenAIEnabled: false, openAIAPIKeyIdentifier: apiKeyIdentifier)
+      let newSettings = Settings(
+        isOpenAIEnabled: false,
+        openAIAPIKeyIdentifier: openAIApiKeyIdentifier,
+        isGeminiEnabled: false,
+        geminiAPIKeyIdentifier: geminiApiKeyIdentifier
+      )
       modelContext.insert(newSettings)
     }
   }
@@ -68,7 +106,9 @@ struct SettingsView: View {
   private func updateSettings() {
     if let existingSettings = settings.first {
       existingSettings.isOpenAIEnabled = isOpenAIEnabled
-      existingSettings.openAIAPIKeyIdentifier = apiKeyIdentifier
+      existingSettings.openAIAPIKeyIdentifier = openAIApiKeyIdentifier
+      existingSettings.isGeminiEnabled = isGeminiEnabled
+      existingSettings.geminiAPIKeyIdentifier = geminiApiKeyIdentifier
     }
   }
 }

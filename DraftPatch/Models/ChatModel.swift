@@ -16,5 +16,6 @@ struct ChatModel: Identifiable, Codable, Hashable {
   enum LLMProvider: String, Codable {
     case ollama
     case openai
+    case gemini
   }
 }

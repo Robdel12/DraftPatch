@@ -12,11 +12,21 @@ import SwiftData
 class Settings {
   @Attribute(.unique) var id: UUID?
 
-  var isOpenAIEnabled: Bool
+  var defaultModel: String = ""
+
+  var isOpenAIEnabled: Bool = false
   var openAIAPIKeyIdentifier: String?
 
-  init(isOpenAIEnabled: Bool = false, openAIAPIKeyIdentifier: String? = nil) {
+  var isGeminiEnabled: Bool = false
+  var geminiAPIKeyIdentifier: String?
+
+  init(
+    isOpenAIEnabled: Bool = false, openAIAPIKeyIdentifier: String? = nil,
+    isGeminiEnabled: Bool = false, geminiAPIKeyIdentifier: String? = nil
+  ) {
     self.isOpenAIEnabled = isOpenAIEnabled
     self.openAIAPIKeyIdentifier = openAIAPIKeyIdentifier
+    self.isGeminiEnabled = isGeminiEnabled
+    self.geminiAPIKeyIdentifier = geminiAPIKeyIdentifier
   }
 }

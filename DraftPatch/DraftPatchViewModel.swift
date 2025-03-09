@@ -38,8 +38,7 @@ class DraftPatchViewModel: ObservableObject {
     loadThreads()
 
     Task {
-      await loadLocalModels()
-      await loadOpenAIModels()
+      await loadLLMs()
     }
   }
 
@@ -51,14 +50,16 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
 
-  func loadLocalModels() async {
+  func loadLLMs() async {
+    await loadOllamaModels()
+    await loadOpenAIModels()
+    await loadGeminiModels()
+  }
+
+  func loadOllamaModels() async {
     do {
       let models = try await OllamaService.shared.fetchAvailableModels()
       self.availableModels = models.map { ChatModel(name: $0, provider: .ollama) }
-
-      if let firstModel = availableModels.first {
-        self.selectedModel = firstModel
-      }
     } catch {
       print("Error loading Ollama models: \(error)")
     }
@@ -74,6 +75,19 @@ class DraftPatchViewModel: ObservableObject {
       self.availableModels += openAIModels
     } catch {
       print("Error loading OpenAI models: \(error)")
+    }
+  }
+
+  func loadGeminiModels() async {
+    guard settings?.isGeminiEnabled ?? false else { return }
+
+    do {
+      let models = try await GeminiService.shared.fetchAvailableModels()
+      let geminiModels = models.map { ChatModel(name: $0, provider: .gemini) }
+
+      self.availableModels += geminiModels
+    } catch {
+      print("Error loading Gemini models: \(error)")
     }
   }
 
@@ -257,6 +271,11 @@ class DraftPatchViewModel: ObservableObject {
         messages: messages,
         modelName: thread.model.name
       )
+    case .gemini:
+      return GeminiService.shared.streamChat(
+        messages: messages,
+        modelName: thread.model.name
+      )
     }
   }
 
@@ -267,6 +286,8 @@ class DraftPatchViewModel: ObservableObject {
       return try await OllamaService.shared.generateTitle(for: text, modelName: model.name)
     case .openai:
       return try await OpenAIService.shared.generateTitle(for: text, modelName: model.name)
+    case .gemini:
+      return try await GeminiService.shared.generateTitle(for: text, modelName: model.name)
     }
   }
 }
