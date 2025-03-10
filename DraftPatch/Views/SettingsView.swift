@@ -14,7 +14,9 @@ struct SettingsView: View {
   @Query private var settings: [Settings]
 
   @State private var selectedDefaultModel: ChatModel?
+
   @State private var isOllamaEnabled: Bool = false
+  @State private var ollamaAPIURL: String = ""
 
   @State private var isOpenAIEnabled: Bool = false
   @State private var openAIApiKey: String = ""
@@ -54,6 +56,13 @@ struct SettingsView: View {
           Divider()
 
           Toggle("Enable Ollama", isOn: $isOllamaEnabled)
+
+          if isOllamaEnabled {
+            TextField("Ollama API URL", text: $ollamaAPIURL)
+              .textFieldStyle(RoundedBorderTextFieldStyle())
+              .padding(.vertical, 5)
+              .frame(maxWidth: 420)
+          }
 
           Text("OpenAI Settings")
             .font(.title3)
@@ -146,6 +155,7 @@ struct SettingsView: View {
 
     if let ollamaConfig = existingSettings.ollamaConfig {
       isOllamaEnabled = ollamaConfig.enabled
+      ollamaAPIURL = ollamaConfig.endpointURL.absoluteString
     } else {
       let newConfig = OllamaConfig(enabled: false)
       existingSettings.ollamaConfig = newConfig
@@ -228,6 +238,13 @@ struct SettingsView: View {
 
     if let ollamaConfig = existingSettings.ollamaConfig {
       ollamaConfig.enabled = isOllamaEnabled
+
+      if let validURL = URL(string: ollamaAPIURL), !ollamaAPIURL.isEmpty {
+        ollamaConfig.endpointURL = validURL
+      } else {
+        // TODO: show in UI
+        print("Invalid Ollama API URL provided: \(ollamaAPIURL)")
+      }
     }
 
     if let openAIConfig = existingSettings.openAIConfig {

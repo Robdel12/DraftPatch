@@ -45,17 +45,20 @@ class OllamaConfig: LLMConfig {
   var maxTokens: Int
   var enabled: Bool
   var localModelPath: String?
+  var endpointURL: URL = URL(string: "http://localhost:11434")!
 
   init(
     temperature: Double = 0.7,
     maxTokens: Int = 2000,
     enabled: Bool = false,
-    localModelPath: String? = nil
+    localModelPath: String? = nil,
+    endpointURL: URL = URL(string: "http://localhost:11434")!
   ) {
     self.temperature = temperature
     self.maxTokens = maxTokens
     self.enabled = enabled
     self.localModelPath = localModelPath
+    self.endpointURL = endpointURL
   }
 }
 

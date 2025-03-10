@@ -142,6 +142,10 @@ class DraftPatchViewModel: ObservableObject {
 
     do {
       settings = try context.fetch(descriptor).first
+
+      if settings != nil, let ollamaEndpontURL = settings?.ollamaConfig?.endpointURL {
+        OllamaService.shared.endpointURL = ollamaEndpontURL
+      }
     } catch {
       print("Error loading settings: \(error)")
     }

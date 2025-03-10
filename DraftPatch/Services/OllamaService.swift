@@ -11,7 +11,7 @@ final class OllamaService: LLMService {
   @MainActor static let shared = OllamaService()
 
   var endpointURL = URL(string: "http://localhost:11434")!
-  var apiKey: String? = nil  // Ollama doesn't require an API key.
+  var apiKey: String? = nil
 
   func fetchAvailableModels() async throws -> [String] {
     let url = endpointURL.appendingPathComponent("api/tags")
