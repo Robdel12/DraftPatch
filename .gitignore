@@ -1,0 +1,58 @@
+# ------------------------------------------------------
+# macOS Files
+# ------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ------------------------------------------------------
+# Xcode
+# ------------------------------------------------------g
+# Xcode workspaces
+*.xcworkspace
+
+# Xcode user data
+*.xcuserdatad
+*.xcuserdata
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Xcode project files
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+# The 'project.pbxproj' and shared data are typically needed in source control
+
+# Build artifacts
+build/
+DerivedData/
+
+# ------------------------------------------------------
+# Swift Package Manager
+# ------------------------------------------------------
+.build/
+Package.pins
+Package.resolved
+# Unless you want to commit your Package.resolved
+
+# ------------------------------------------------------
+# Signing & Provisioning
+# ------------------------------------------------------
+*.cer
+*.p12
+*.mobileprovision
+*.provisionprofile
+
+# ------------------------------------------------------
+# Misc
+# ------------------------------------------------------
+*.xcdebugger
+*.log
+*.swp
+*.tmp
+*.lock
+*.ipa
+*.dSYM.zip
+*.dSYM
