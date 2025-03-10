@@ -67,34 +67,6 @@ final class DraftingSerivce: ObservableObject {
     return AXUIElementCreateApplication(app.processIdentifier)
   }
 
-  /// Retrieves selected text or the full document text from a given application
-  func getSelectedOrActiveText(appIdentifier: String) -> String {
-    guard let appElement = getApplicationElement(bundleIdentifier: appIdentifier) else {
-      return "[AccessibilityTextService] \(appIdentifier) is not running or not accessible."
-    }
-
-    print("[AccessibilityTextService] Searching for selected text in \(appIdentifier)...")
-
-    // Try to get selected text from the focused UI element
-    if let selectedText = getSelectedText(from: appElement) {
-      print(
-        "[AccessibilityTextService] Selected text found in \(appIdentifier): \(selectedText.prefix(100))...")
-      return selectedText
-    }
-
-    // If no selection, try getting the full document text
-    print(
-      "[AccessibilityTextService] No selected text found, searching for full document text in \(appIdentifier)..."
-    )
-    if let documentText = getAttributeText(from: appElement, attribute: kAXValueAttribute as CFString) {
-      print("[AccessibilityTextService] Found full document text in \(appIdentifier).")
-      return documentText
-    }
-
-    print("[AccessibilityTextService] No text found in \(appIdentifier).")
-    return "No text found."
-  }
-
   /// Tries to get selected text from focused UI element (used for multiple applications)
   private func getSelectedText(from appElement: AXUIElement) -> String? {
     var focusedElement: AnyObject?
@@ -187,6 +159,58 @@ final class DraftingSerivce: ObservableObject {
     }
 
     print("[AccessibilityTextService] No valid file extension found.")
+    return nil
+  }
+
+  /// Retrieves selected text or falls back to getting the full view content
+  func getSelectedOrViewText(appIdentifier: String) -> String {
+    guard let appElement = getApplicationElement(bundleIdentifier: appIdentifier) else {
+      return "[AccessibilityTextService] \(appIdentifier) is not running or not accessible."
+    }
+
+    print("[AccessibilityTextService] Searching for selected text in \(appIdentifier)...")
+
+    // Try to get selected text
+    if let selectedText = getSelectedText(from: appElement), !selectedText.isEmpty {
+      print(
+        "[AccessibilityTextService] Selected text found in \(appIdentifier): \(selectedText.prefix(100))...")
+      return selectedText
+    }
+
+    print(
+      "[AccessibilityTextService] No selected text found or selected text is empty, retrieving full view content..."
+    )
+
+    // If no selection, get the entire view's content
+    if let viewText = getViewContent(from: appElement), !viewText.isEmpty {
+      print("[AccessibilityTextService] Found full view content in \(appIdentifier).")
+      return viewText
+    }
+
+    print("[AccessibilityTextService] No text found in \(appIdentifier).")
+    return "No text found."
+  }
+
+  /// Retrieves the full contents of the current application's focused view
+  private func getViewContent(from appElement: AXUIElement) -> String? {
+    var focusedElement: AnyObject?
+    if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+      == .success
+    {
+      let focusedUIElement = focusedElement as! AXUIElement
+      print("[AccessibilityTextService] Found focused UI element.")
+
+      // Attempt to get full text content of the view
+      if let fullText = getAttributeText(from: focusedUIElement, attribute: kAXValueAttribute as CFString) {
+        print("[AccessibilityTextService] Retrieved full text from view.")
+        return fullText
+      } else {
+        print("[AccessibilityTextService] Unable to retrieve full view content.")
+      }
+    } else {
+      print("[AccessibilityTextService] Could not retrieve focused UI element.")
+    }
+
     return nil
   }
 }

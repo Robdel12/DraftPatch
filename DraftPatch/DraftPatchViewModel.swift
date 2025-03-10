@@ -182,7 +182,7 @@ class DraftPatchViewModel: ObservableObject {
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
-      DraftingSerivce.shared.getSelectedOrActiveText(appIdentifier: draftApp.id)
+      DraftingSerivce.shared.getSelectedOrViewText(appIdentifier: draftApp.id)
     }
 
     // Fetch file extension if a DraftApp is selected
