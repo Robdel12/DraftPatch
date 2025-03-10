@@ -37,6 +37,11 @@ struct ChatView: View {
             Text(error)
               .foregroundColor(.red)
               .padding(.vertical)
+              .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                  viewModel.errorMessage = nil
+                }
+              }
           }
 
           ChatBoxView(

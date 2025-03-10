@@ -221,13 +221,4 @@ struct GeminiService: LLMService {
 
     throw URLError(.cannotParseResponse)
   }
-
-  // MARK: - Generate Title
-  func generateTitle(for message: String, modelName: String) async throws -> String {
-    return try await singleChatCompletion(
-      message: "Generate a short title for: \(message)",
-      modelName: modelName,
-      systemPrompt: nil
-    )
-  }
 }

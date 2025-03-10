@@ -261,19 +261,4 @@ struct ClaudeService: LLMService {
 
     return joinedText
   }
-
-  /// Generate a short “title” for a chunk of text using Claude
-  func generateTitle(for message: String, modelName: String) async throws -> String {
-    // You can embed your instruction inside the system prompt:
-    let systemPrompt = """
-      You are a concise assistant that generates a short title for the user’s message.
-      The title should be fewer than 8 words and should accurately reflect the content.
-      """
-
-    return try await singleChatCompletion(
-      message: message,
-      modelName: modelName,
-      systemPrompt: systemPrompt
-    )
-  }
 }
