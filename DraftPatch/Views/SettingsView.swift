@@ -33,11 +33,11 @@ struct SettingsView: View {
             .font(.largeTitle)
             .bold()
 
-          Divider()
-
           Text("Default Chat Model")
             .font(.title3)
             .bold()
+
+          Divider()
 
           Picker("Select Default Model", selection: $selectedDefaultModel) {
             Text("None").tag(nil as ChatModel?)
@@ -51,16 +51,15 @@ struct SettingsView: View {
             .font(.title3)
             .bold()
 
-          Toggle("Enable Ollama", isOn: $isOllamaEnabled)
+          Divider()
 
-          if isOllamaEnabled {
-            OllamaModelManagementView()
-              .frame(maxWidth: 420)
-          }
+          Toggle("Enable Ollama", isOn: $isOllamaEnabled)
 
           Text("OpenAI Settings")
             .font(.title3)
             .bold()
+
+          Divider()
 
           Toggle("Enable OpenAI", isOn: $isOpenAIEnabled)
 
@@ -75,6 +74,8 @@ struct SettingsView: View {
             .font(.title3)
             .bold()
 
+          Divider()
+
           Toggle("Enable Gemini", isOn: $isGeminiEnabled)
 
           if isGeminiEnabled {
@@ -87,6 +88,8 @@ struct SettingsView: View {
           Text("Anthropic Settings")
             .font(.title3)
             .bold()
+
+          Divider()
 
           Toggle("Enable Claude", isOn: $isAnthropicEnabled)
 

@@ -81,12 +81,8 @@ struct RootView: View {
 
       if !showSettings {
         ToolbarItem(placement: .automatic) {
-          Picker("Model", selection: $viewModel.selectedModel) {
-            ForEach(viewModel.availableModels, id: \.id) { model in
-              Text(model.name).tag(model)
-            }
-          }
-          .pickerStyle(.menu)
+          ModelPickerPopoverView()
+            .environmentObject(viewModel)
         }
 
         ToolbarItem(placement: .primaryAction) {

@@ -161,4 +161,41 @@ final class OllamaService: LLMService {
       }
     }
   }
+
+  func deleteModel(modelName: String) async throws {
+    let url = endpointURL.appendingPathComponent("api/delete")
+    var request = URLRequest(url: url)
+    request.httpMethod = "DELETE"
+    request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let payload: [String: Any] = ["model": modelName]
+    request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw NSError(
+        domain: "OllamaService",
+        code: 1,
+        userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
+      )
+    }
+
+    switch httpResponse.statusCode {
+    case 200:
+      return  // Success
+    case 404:
+      throw NSError(
+        domain: "OllamaService",
+        code: 404,
+        userInfo: [NSLocalizedDescriptionKey: "Model not found"]
+      )
+    default:
+      throw NSError(
+        domain: "OllamaService",
+        code: httpResponse.statusCode,
+        userInfo: [NSLocalizedDescriptionKey: "Failed to delete model"]
+      )
+    }
+  }
 }
