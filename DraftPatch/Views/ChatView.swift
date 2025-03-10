@@ -33,6 +33,12 @@ struct ChatView: View {
           }
           .defaultScrollAnchor(.bottom)
 
+          if let error = viewModel.errorMessage {
+            Text(error)
+              .foregroundColor(.red)
+              .padding(.vertical)
+          }
+
           ChatBoxView(
             userMessage: $userMessage,
             selectedDraftApp: $viewModel.selectedDraftApp,

@@ -65,7 +65,6 @@ struct GeminiService: LLMService {
   func streamChat(messages: [ChatMessagePayload], modelName: String) -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
       Task {
-        print("messages: \(messages)")
         do {
           guard let apiKey = apiKey, !apiKey.isEmpty else {
             throw URLError(.badServerResponse)

@@ -17,5 +17,6 @@ struct ChatModel: Identifiable, Codable, Hashable {
     case ollama
     case openai
     case gemini
+    case anthropic
   }
 }

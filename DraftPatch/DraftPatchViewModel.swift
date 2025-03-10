@@ -36,6 +36,7 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
   @Published var settings: Settings? = nil
+  @Published var errorMessage: String? = nil
 
   init(context: ModelContext) {
     self.context = context
@@ -60,6 +61,7 @@ class DraftPatchViewModel: ObservableObject {
     await loadOllamaModels()
     await loadOpenAIModels()
     await loadGeminiModels()
+    await loadAnthropicModels()
   }
 
   func loadOllamaModels() async {
@@ -94,6 +96,19 @@ class DraftPatchViewModel: ObservableObject {
       self.availableModels += geminiModels
     } catch {
       print("Error loading Gemini models: \(error)")
+    }
+  }
+
+  func loadAnthropicModels() async {
+    guard settings?.isAnthropicEnabled ?? false else { return }
+
+    do {
+      let models = try await ClaudeService.shared.fetchAvailableModels()
+      let anthropicModels = models.map { ChatModel(name: $0, provider: .anthropic) }
+
+      self.availableModels += anthropicModels
+    } catch {
+      print("Error loading Anthropic models: \(error)")
     }
   }
 
@@ -241,6 +256,7 @@ class DraftPatchViewModel: ObservableObject {
         }
       } catch {
         print("Error during streaming: \(error)")
+        errorMessage = error.localizedDescription
       }
 
       thinking = false
@@ -294,6 +310,11 @@ class DraftPatchViewModel: ObservableObject {
         messages: messages,
         modelName: thread.model.name
       )
+    case .anthropic:
+      return ClaudeService.shared.streamChat(
+        messages: messages,
+        modelName: thread.model.name
+      )
     }
   }
 
@@ -306,6 +327,8 @@ class DraftPatchViewModel: ObservableObject {
       return try await OpenAIService.shared.generateTitle(for: text, modelName: model.name)
     case .gemini:
       return try await GeminiService.shared.generateTitle(for: text, modelName: model.name)
+    case .anthropic:
+      return try await ClaudeService.shared.generateTitle(for: text, modelName: model.name)
     }
   }
 }

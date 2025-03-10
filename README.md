@@ -5,7 +5,7 @@ ChatGPT app and use that with any given LLM (Ollama models, Gemini, OpenAI, Anth
 
 ## Features
 
-- ✅ OpenAI, Gemini, & Ollama chat support
+- ✅ Anthropic, OpenAI, Gemini, & Ollama chat support
 - ✅ Draft With Xcode & Emacs
 - ✅ Markdown & syntax highlighting
 

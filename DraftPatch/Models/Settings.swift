@@ -21,13 +21,21 @@ class Settings {
   var isGeminiEnabled: Bool = false
   var geminiAPIKeyIdentifier: String?
 
+  var isAnthropicEnabled: Bool = false
+  var anthropicAPIKeyIdentifier: String?
+
   init(
     isOpenAIEnabled: Bool = false, openAIAPIKeyIdentifier: String? = nil,
-    isGeminiEnabled: Bool = false, geminiAPIKeyIdentifier: String? = nil
+    isGeminiEnabled: Bool = false, geminiAPIKeyIdentifier: String? = nil,
+    isAnthropicEnabled: Bool = false, anthropicAPIKeyIdentifier: String? = nil
   ) {
     self.isOpenAIEnabled = isOpenAIEnabled
     self.openAIAPIKeyIdentifier = openAIAPIKeyIdentifier
+
     self.isGeminiEnabled = isGeminiEnabled
     self.geminiAPIKeyIdentifier = geminiAPIKeyIdentifier
+
+    self.isAnthropicEnabled = isAnthropicEnabled
+    self.anthropicAPIKeyIdentifier = anthropicAPIKeyIdentifier
   }
 }
