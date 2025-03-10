@@ -67,7 +67,8 @@ class DraftPatchViewModel: ObservableObject {
   func loadOllamaModels() async {
     do {
       let models = try await OllamaService.shared.fetchAvailableModels()
-      self.availableModels = models.map { ChatModel(name: $0, provider: .ollama) }
+      let ollamaModels = models.map { ChatModel(name: $0, provider: .ollama) }
+      addModels(ollamaModels)
     } catch {
       print("Error loading Ollama models: \(error)")
     }
@@ -79,8 +80,7 @@ class DraftPatchViewModel: ObservableObject {
     do {
       let models = try await OpenAIService.shared.fetchAvailableModels()
       let openAIModels = models.map { ChatModel(name: $0, provider: .openai) }
-
-      self.availableModels += openAIModels
+      addModels(openAIModels)
     } catch {
       print("Error loading OpenAI models: \(error)")
     }
@@ -92,8 +92,7 @@ class DraftPatchViewModel: ObservableObject {
     do {
       let models = try await GeminiService.shared.fetchAvailableModels()
       let geminiModels = models.map { ChatModel(name: $0, provider: .gemini) }
-
-      self.availableModels += geminiModels
+      addModels(geminiModels)
     } catch {
       print("Error loading Gemini models: \(error)")
     }
@@ -105,10 +104,17 @@ class DraftPatchViewModel: ObservableObject {
     do {
       let models = try await ClaudeService.shared.fetchAvailableModels()
       let anthropicModels = models.map { ChatModel(name: $0, provider: .anthropic) }
-
-      self.availableModels += anthropicModels
+      addModels(anthropicModels)
     } catch {
       print("Error loading Anthropic models: \(error)")
+    }
+  }
+
+  private func addModels(_ newModels: [ChatModel]) {
+    for model in newModels {
+      if !self.availableModels.contains(model) {
+        self.availableModels.append(model)
+      }
     }
   }
 

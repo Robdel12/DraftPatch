@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct ChatModel: Identifiable, Codable, Hashable {
+struct ChatModel: Identifiable, Codable, Hashable, Equatable {
   let name: String
   let provider: LLMProvider
 
@@ -18,5 +18,9 @@ struct ChatModel: Identifiable, Codable, Hashable {
     case openai
     case gemini
     case anthropic
+  }
+
+  static func == (lhs: ChatModel, rhs: ChatModel) -> Bool {
+    return lhs.name == rhs.name && lhs.provider == rhs.provider
   }
 }
