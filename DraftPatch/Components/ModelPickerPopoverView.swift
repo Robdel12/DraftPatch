@@ -174,6 +174,9 @@ struct ModelPickerPopoverView: View {
       do {
         try await OllamaService.shared.deleteModel(modelName: modelName)
         viewModel.availableModels.removeAll { $0.name == modelName }
+        if let firstAvailable = viewModel.availableModels.first, viewModel.selectedModel.name == modelName {
+          viewModel.selectedModel = firstAvailable
+        }
         print("Model deleted successfully.")
       } catch {
         print("Error deleting model:", error)
