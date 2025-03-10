@@ -75,7 +75,7 @@ struct ChatBoxView: View {
           isShowingPopover.toggle()
         }) {
           Image(systemName: "car.side.air.fresh")
-            .font(.title2)
+            .font(.title3)
             .foregroundStyle(selectedDraftApp != nil ? .blue : .gray)
         }
         .buttonStyle(.plain)
