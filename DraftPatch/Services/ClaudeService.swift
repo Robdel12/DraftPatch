@@ -78,27 +78,19 @@ struct ClaudeService: LLMService {
           let requestBody: [String: Any] = [
             "model": modelName,
             "messages": anthropicMessages,
-            "max_tokens": 2000,
+            "max_tokens": 4096,
             "stream": true,
           ]
           let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: [.prettyPrinted])
           request.httpBody = jsonData
 
-          // Debug: print the JSON
-          if let jsonString = String(data: jsonData, encoding: .utf8) {
-            print("[ClaudeService] Request JSON:\n\(jsonString)")
-          }
-
-          // Perform the streaming request
           let (bytesStream, response) = try await URLSession.shared.bytes(for: request)
 
-          // Check status code
           guard let httpResponse = response as? HTTPURLResponse else {
             print("[ClaudeService] Response was not an HTTPURLResponse.")
             throw URLError(.badServerResponse)
           }
 
-          print("[ClaudeService] HTTP status code:", httpResponse.statusCode)
           if httpResponse.statusCode != 200 {
             // Read raw response body
             var errorData = Data()
@@ -122,7 +114,6 @@ struct ClaudeService: LLMService {
                     userInfo: [NSLocalizedDescriptionKey: errorMessage]
                   )
 
-                  // Throw immediately to prevent further processing
                   continuation.finish(throwing: anthropicError)
                   return
                 }
@@ -133,16 +124,13 @@ struct ClaudeService: LLMService {
               }
             }
 
-            // Fallback: throw the original raw error response if parsing fails
             let userInfo = [NSLocalizedDescriptionKey: "HTTP \(httpResponse.statusCode): \(errorBody)"]
             continuation.finish(
               throwing: NSError(domain: "AnthropicError", code: httpResponse.statusCode, userInfo: userInfo))
           }
 
-          // Otherwise, we are good to parse the SSE lines
           var currentEvent: String?
           for try await line in bytesStream.lines {
-            print("[ClaudeService] SSE line:", line)
 
             if line.hasPrefix("event: ") {
               currentEvent = String(line.dropFirst("event: ".count))
@@ -153,9 +141,7 @@ struct ClaudeService: LLMService {
                 continue
               }
 
-              // The event "message_stop" indicates the end
               if currentEvent == "message_stop" {
-                print("[ClaudeService] Received `message_stop` event; ending stream.")
                 break
               }
 
@@ -182,7 +168,6 @@ struct ClaudeService: LLMService {
             }
           }
 
-          print("[ClaudeService] Finished reading stream.")
           continuation.finish()
 
         } catch {

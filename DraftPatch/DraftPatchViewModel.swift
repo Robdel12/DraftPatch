@@ -58,6 +58,8 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
+    self.availableModels = []
+
     await loadOllamaModels()
     await loadOpenAIModels()
     await loadGeminiModels()
@@ -65,6 +67,8 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadOllamaModels() async {
+    guard settings?.ollamaConfig?.enabled ?? false else { return }
+
     do {
       let models = try await OllamaService.shared.fetchAvailableModels()
       let ollamaModels = models.map { ChatModel(name: $0, provider: .ollama) }
@@ -75,7 +79,7 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadOpenAIModels() async {
-    guard settings?.isOpenAIEnabled ?? false else { return }
+    guard settings?.openAIConfig?.enabled ?? false else { return }
 
     do {
       let models = try await OpenAIService.shared.fetchAvailableModels()
@@ -87,7 +91,7 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadGeminiModels() async {
-    guard settings?.isGeminiEnabled ?? false else { return }
+    guard settings?.geminiConfig?.enabled ?? false else { return }
 
     do {
       let models = try await GeminiService.shared.fetchAvailableModels()
@@ -99,7 +103,7 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadAnthropicModels() async {
-    guard settings?.isAnthropicEnabled ?? false else { return }
+    guard settings?.anthropicConfig?.enabled ?? false else { return }
 
     do {
       let models = try await ClaudeService.shared.fetchAvailableModels()

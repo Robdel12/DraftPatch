@@ -69,11 +69,6 @@ struct RootView: View {
             SettingsView()
               .environmentObject(viewModel)
           }
-          .onAppear {
-            Task {
-              await viewModel.loadLLMs()
-            }
-          }
       }
     }
     .navigationTitle("")

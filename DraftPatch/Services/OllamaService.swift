@@ -21,7 +21,11 @@ final class OllamaService: LLMService {
       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let models = json["models"] as? [[String: Any]]
     else {
-      return []
+      throw NSError(
+        domain: "OllamaService",
+        code: 1,
+        userInfo: [NSLocalizedDescriptionKey: "Invalid response"]
+      )
     }
 
     return models.compactMap { $0["name"] as? String }
@@ -113,6 +117,40 @@ final class OllamaService: LLMService {
                 continuation.finish()
                 return
               }
+            }
+          }
+
+          continuation.finish()
+        } catch {
+          continuation.finish(throwing: error)
+        }
+      }
+    }
+  }
+
+  func pullModel(modelName: String) -> AsyncThrowingStream<[String: Any], Error> {
+    AsyncThrowingStream { continuation in
+      Task {
+        do {
+          let url = endpointURL.appendingPathComponent("api/pull")
+          var request = URLRequest(url: url)
+          request.httpMethod = "POST"
+          request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+          let payload: [String: Any] = [
+            "model": modelName,
+            "stream": true,
+          ]
+
+          request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+          let (stream, _) = try await URLSession.shared.bytes(for: request)
+
+          for try await line in stream.lines {
+            guard let data = line.data(using: .utf8), !data.isEmpty else { continue }
+
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+              continuation.yield(json)
             }
           }
 

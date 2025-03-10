@@ -15,27 +15,106 @@ class Settings {
   var defaultModel: ChatModel? = nil
   var lastAppDraftedWith: DraftApp? = nil
 
-  var isOpenAIEnabled: Bool = false
-  var openAIAPIKeyIdentifier: String?
-
-  var isGeminiEnabled: Bool = false
-  var geminiAPIKeyIdentifier: String?
-
-  var isAnthropicEnabled: Bool = false
-  var anthropicAPIKeyIdentifier: String?
+  var ollamaConfig: OllamaConfig?
+  var openAIConfig: OpenAIConfig?
+  var geminiConfig: GeminiConfig?
+  var anthropicConfig: AnthropicConfig?
 
   init(
-    isOpenAIEnabled: Bool = false, openAIAPIKeyIdentifier: String? = nil,
-    isGeminiEnabled: Bool = false, geminiAPIKeyIdentifier: String? = nil,
-    isAnthropicEnabled: Bool = false, anthropicAPIKeyIdentifier: String? = nil
+    id: UUID? = nil,
+    defaultModel: ChatModel? = nil,
+    lastAppDraftedWith: DraftApp? = nil,
+    ollamaConfig: OllamaConfig? = nil,
+    openAIConfig: OpenAIConfig? = nil,
+    geminiConfig: GeminiConfig? = nil,
+    anthropicConfig: AnthropicConfig? = nil
   ) {
-    self.isOpenAIEnabled = isOpenAIEnabled
-    self.openAIAPIKeyIdentifier = openAIAPIKeyIdentifier
+    self.id = id
+    self.defaultModel = defaultModel
+    self.lastAppDraftedWith = lastAppDraftedWith
+    self.ollamaConfig = ollamaConfig
+    self.openAIConfig = openAIConfig
+    self.geminiConfig = geminiConfig
+    self.anthropicConfig = anthropicConfig
+  }
+}
 
-    self.isGeminiEnabled = isGeminiEnabled
-    self.geminiAPIKeyIdentifier = geminiAPIKeyIdentifier
+@Model
+class OllamaConfig: LLMConfig {
+  var temperature: Double
+  var maxTokens: Int
+  var enabled: Bool
+  var localModelPath: String?
 
-    self.isAnthropicEnabled = isAnthropicEnabled
-    self.anthropicAPIKeyIdentifier = anthropicAPIKeyIdentifier
+  init(
+    temperature: Double = 0.7,
+    maxTokens: Int = 2000,
+    enabled: Bool = false,
+    localModelPath: String? = nil
+  ) {
+    self.temperature = temperature
+    self.maxTokens = maxTokens
+    self.enabled = enabled
+    self.localModelPath = localModelPath
+  }
+}
+
+@Model
+class OpenAIConfig: LLMConfig {
+  var temperature: Double
+  var maxTokens: Int
+  var enabled: Bool
+  var apiKeyIdentifier: String?
+
+  init(
+    temperature: Double = 0.7,
+    maxTokens: Int = 2000,
+    enabled: Bool = false,
+    apiKeyIdentifier: String? = nil
+  ) {
+    self.temperature = temperature
+    self.maxTokens = maxTokens
+    self.enabled = enabled
+    self.apiKeyIdentifier = apiKeyIdentifier
+  }
+}
+
+@Model
+class GeminiConfig: LLMConfig {
+  var temperature: Double
+  var maxTokens: Int
+  var enabled: Bool
+  var apiKeyIdentifier: String?
+
+  init(
+    temperature: Double = 0.7,
+    maxTokens: Int = 2000,
+    enabled: Bool = false,
+    apiKeyIdentifier: String? = nil
+  ) {
+    self.temperature = temperature
+    self.maxTokens = maxTokens
+    self.enabled = enabled
+    self.apiKeyIdentifier = apiKeyIdentifier
+  }
+}
+
+@Model
+class AnthropicConfig: LLMConfig {
+  var temperature: Double
+  var maxTokens: Int
+  var enabled: Bool
+  var apiKeyIdentifier: String?
+
+  init(
+    temperature: Double = 0.7,
+    maxTokens: Int = 2000,
+    enabled: Bool = false,
+    apiKeyIdentifier: String? = nil
+  ) {
+    self.temperature = temperature
+    self.maxTokens = maxTokens
+    self.enabled = enabled
+    self.apiKeyIdentifier = apiKeyIdentifier
   }
 }
