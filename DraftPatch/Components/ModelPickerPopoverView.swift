@@ -328,7 +328,7 @@ struct ModelPickerRow: View {
   var body: some View {
     HStack {
       Text(model.name)
-        .foregroundColor(isSelected ? .accentColor : .primary)
+        .foregroundColor(isSelected ? .white : .primary)
 
       Spacer()
 
