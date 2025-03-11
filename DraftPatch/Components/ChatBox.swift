@@ -17,6 +17,26 @@ struct ChatBoxView: View {
   let draftWithLastApp: () -> Void
 
   @State private var isShowingPopover = false
+  @State private var selectedText: String?
+  @State private var lineNumbers: (start: Int, end: Int)?
+  @State private var fileName: String?
+
+  var draftingText: String {
+    guard let app = selectedDraftApp else { return "" }
+    let filePart = fileName ?? "Unknown"
+
+    let linePart: String
+    if let lineNumbers = lineNumbers {
+      linePart =
+        lineNumbers.start == lineNumbers.end
+        ? " (\(lineNumbers.start))"
+        : " (\(lineNumbers.start)-\(lineNumbers.end))"
+    } else {
+      linePart = ""
+    }
+
+    return "Drafting with \(app.name) • \(filePart)\(linePart)"
+  }
 
   var body: some View {
     VStack(spacing: 16) {
@@ -28,7 +48,9 @@ struct ChatBoxView: View {
               .scaledToFit()
               .frame(width: 16, height: 16)
 
-            Text("Drafting with \(app.name)")
+            Text(draftingText)
+              .lineLimit(1)
+              .truncationMode(.tail)
 
             Spacer()
 
@@ -50,14 +72,17 @@ struct ChatBoxView: View {
         .focused($isTextFieldFocused)
         .disabled(thinking)
         .onAppear {
+          updateSelectedTextDetails()
           DispatchQueue.main.async {
             isTextFieldFocused = true
           }
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
+          _ in
+          updateSelectedTextDetails()
+        }
         .onKeyPress { keyPress in
-          if keyPress.modifiers == .shift
-            && keyPress.key == .return
-          {
+          if keyPress.modifiers == .shift && keyPress.key == .return {
             userMessage += "\n"
             return .handled
           } else if keyPress.modifiers.isEmpty && keyPress.key == .return {
@@ -108,5 +133,13 @@ struct ChatBoxView: View {
     .padding()
     .background(Color(.secondarySystemFill))
     .cornerRadius(8)
+  }
+
+  private func updateSelectedTextDetails() {
+    guard let app = selectedDraftApp else { return }
+    let (text, lines, file) = DraftingService.shared.getSelectedTextDetails(appIdentifier: app.id)
+    selectedText = text
+    lineNumbers = lines
+    fileName = file
   }
 }
