@@ -18,6 +18,8 @@ struct ModelPickerPopoverView: View {
   @State private var downloadFailed: Bool = false
   @State private var errorMessage: String = ""
   @State private var currentDigest: String = ""
+  @State private var selectedIndex: Int = 0
+  @FocusState private var isSearchFieldFocused: Bool
 
   var filteredModels: [ChatModel] {
     if searchText.isEmpty {
@@ -42,6 +44,7 @@ struct ModelPickerPopoverView: View {
       }
       .padding(8)
     }
+    .keyboardShortcut("e", modifiers: .command)
     .buttonStyle(.plain)
     .background(
       RoundedRectangle(cornerRadius: 8)
@@ -57,6 +60,44 @@ struct ModelPickerPopoverView: View {
             .foregroundColor(.secondary)
           TextField("Search or download a model", text: $searchText)
             .textFieldStyle(RoundedBorderTextFieldStyle())
+            .focused($isSearchFieldFocused)
+            .onAppear {
+              isSearchFieldFocused = true
+              selectedIndex = 0
+            }
+            .onSubmit {
+              if !filteredModels.isEmpty {
+                selectModel(at: selectedIndex)
+              } else if canDownloadNewModel {
+                pullModel(modelName: searchText)
+              }
+            }
+            .onKeyPress(.upArrow) {
+              navigateUp()
+              return .handled
+            }
+            .onKeyPress(.downArrow) {
+              navigateDown()
+              return .handled
+            }
+            .onKeyPress { keyPress in
+              if keyPress.phase == .down {
+                switch keyPress.characters {
+                case "n" where keyPress.modifiers.contains(.control):
+                  navigateDown()
+                  return .handled
+                case "p" where keyPress.modifiers.contains(.control):
+                  navigateUp()
+                  return .handled
+                case "g" where keyPress.modifiers.contains(.control):
+                  isPopoverPresented = false
+                  return .handled
+                default:
+                  return .ignored
+                }
+              }
+              return .ignored
+            }
         }
 
         Divider()
@@ -68,10 +109,11 @@ struct ModelPickerPopoverView: View {
                 .foregroundColor(.secondary)
                 .padding(.vertical, 8)
             } else {
-              ForEach(filteredModels, id: \.id) { model in
+              ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
                 ModelPickerRow(
                   model: model,
-                  isSelected: model.id == viewModel.selectedModel.id
+                  isSelected: model.id == viewModel.selectedModel.id,
+                  isHighlighted: selectedIndex == index
                 )
                 .contextMenu {
                   if model.provider == .ollama {
@@ -83,9 +125,9 @@ struct ModelPickerPopoverView: View {
                   }
                 }
                 .onTapGesture {
-                  viewModel.selectedModel = model
-                  isPopoverPresented = false
+                  selectModel(at: index)
                 }
+                .id(index)
               }
 
               if canDownloadNewModel {
@@ -139,6 +181,11 @@ struct ModelPickerPopoverView: View {
                     .padding(.vertical, 8)
                   }
                   .buttonStyle(PlainButtonStyle())
+                  .background(
+                    selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
+                  )
+                  .cornerRadius(4)
+                  .id(filteredModels.count)
                 }
               }
             }
@@ -166,6 +213,38 @@ struct ModelPickerPopoverView: View {
           }
         }
       }
+      .onChange(of: filteredModels.count) { _, newCount in
+        if selectedIndex >= newCount {
+          selectedIndex = newCount > 0 ? newCount - 1 : 0
+        }
+      }
+      .onChange(of: searchText) { _, _ in
+        selectedIndex = 0
+      }
+    }
+  }
+
+  private func navigateUp() {
+    if selectedIndex > 0 {
+      selectedIndex -= 1
+    } else if canDownloadNewModel && filteredModels.count > 0 {
+      selectedIndex = filteredModels.count
+    }
+  }
+
+  private func navigateDown() {
+    let maxIndex = canDownloadNewModel ? filteredModels.count : filteredModels.count - 1
+    if selectedIndex < maxIndex {
+      selectedIndex += 1
+    } else {
+      selectedIndex = 0
+    }
+  }
+
+  private func selectModel(at index: Int) {
+    if index < filteredModels.count {
+      viewModel.selectedModel = filteredModels[index]
+      isPopoverPresented = false
     }
   }
 
@@ -242,6 +321,7 @@ struct ModelPickerPopoverView: View {
 struct ModelPickerRow: View {
   let model: ChatModel
   let isSelected: Bool
+  let isHighlighted: Bool
 
   var body: some View {
     HStack {
@@ -257,7 +337,17 @@ struct ModelPickerRow: View {
     }
     .padding(.vertical, 8)
     .padding(.horizontal, 4)
-    .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+    .background(
+      Group {
+        if isHighlighted {
+          Color.accentColor.opacity(0.2)
+        } else if isSelected {
+          Color.accentColor.opacity(0.1)
+        } else {
+          Color.clear
+        }
+      }
+    )
     .cornerRadius(4)
   }
 }
