@@ -19,6 +19,7 @@ struct ModelPickerPopoverView: View {
   @State private var errorMessage: String = ""
   @State private var currentDigest: String = ""
   @State private var selectedIndex: Int = 0
+
   @FocusState private var isSearchFieldFocused: Bool
 
   var filteredModels: [ChatModel] {
@@ -43,6 +44,7 @@ struct ModelPickerPopoverView: View {
         Image(systemName: "chevron.down")
       }
       .padding(8)
+      .contentShape(Rectangle())
     }
     .keyboardShortcut("e", modifiers: .command)
     .buttonStyle(.plain)
@@ -115,6 +117,10 @@ struct ModelPickerPopoverView: View {
                   isSelected: model.id == viewModel.selectedModel.id,
                   isHighlighted: selectedIndex == index
                 )
+                .id(index)
+                .onTapGesture {
+                  selectModel(at: index)
+                }
                 .contextMenu {
                   if model.provider == .ollama {
                     Button(role: .destructive) {
@@ -124,10 +130,6 @@ struct ModelPickerPopoverView: View {
                     }
                   }
                 }
-                .onTapGesture {
-                  selectModel(at: index)
-                }
-                .id(index)
               }
 
               if canDownloadNewModel {
@@ -348,6 +350,7 @@ struct ModelPickerRow: View {
         }
       }
     )
+    .contentShape(Rectangle())
     .cornerRadius(4)
   }
 }
