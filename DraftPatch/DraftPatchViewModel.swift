@@ -39,7 +39,7 @@ class DraftPatchViewModel: ObservableObject {
   @Published var settings: Settings? = nil
   @Published var errorMessage: String? = nil
 
-  init(repository: ChatThreadRepository, llmManager: LLMManager = .shared) {
+  init(repository: ChatThreadRepository, llmManager: LLMManager = LLMManager.shared) {
     self.repository = repository
     self.llmManager = llmManager
 
@@ -100,78 +100,19 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
-    self.availableModels = []
-
-    await loadOllamaModels()
-    await loadOpenAIModels()
-    await loadGeminiModels()
-    await loadAnthropicModels()
-  }
-
-  func loadOllamaModels() async {
-    guard settings?.ollamaConfig?.enabled ?? false else { return }
-
-    do {
-      let models = try await OllamaService.shared.fetchAvailableModels()
-      let ollamaModels = models.map { ChatModel(name: $0, provider: .ollama) }
-      addModels(ollamaModels)
-    } catch {
-      print("Error loading Ollama models: \(error)")
-    }
-  }
-
-  func loadOpenAIModels() async {
-    guard settings?.openAIConfig?.enabled ?? false else { return }
-
-    do {
-      let models = try await OpenAIService.shared.fetchAvailableModels()
-      let openAIModels = models.map { ChatModel(name: $0, provider: .openai) }
-      addModels(openAIModels)
-    } catch {
-      print("Error loading OpenAI models: \(error)")
-    }
-  }
-
-  func loadGeminiModels() async {
-    guard settings?.geminiConfig?.enabled ?? false else { return }
-
-    do {
-      let models = try await GeminiService.shared.fetchAvailableModels()
-      let geminiModels = models.map { ChatModel(name: $0, provider: .gemini) }
-      addModels(geminiModels)
-    } catch {
-      print("Error loading Gemini models: \(error)")
-    }
-  }
-
-  func loadAnthropicModels() async {
-    guard settings?.anthropicConfig?.enabled ?? false else { return }
-
-    do {
-      let models = try await ClaudeService.shared.fetchAvailableModels()
-      let anthropicModels = models.map { ChatModel(name: $0, provider: .anthropic) }
-      addModels(anthropicModels)
-    } catch {
-      print("Error loading Anthropic models: \(error)")
-    }
-  }
-
-  private func addModels(_ newModels: [ChatModel]) {
-    for model in newModels {
-      if !self.availableModels.contains(model) {
-        self.availableModels.append(model)
-      }
-    }
+    self.availableModels = await llmManager.loadLLMs(settings)
   }
 
   func toggleDraftWithLastApp() {
-    if let lastAppDraftedWith = settings?.lastAppDraftedWith {
-      if isDraftingEnabled {
-        isDraftingEnabled = false
-        selectedDraftApp = nil
-      } else {
-        isDraftingEnabled = true
+    if isDraftingEnabled {
+      isDraftingEnabled = false
+      selectedDraftApp = nil
+    } else {
+      isDraftingEnabled = true
+      if let lastAppDraftedWith = settings?.lastAppDraftedWith {
         selectedDraftApp = lastAppDraftedWith
+      } else {
+        selectedDraftApp = DraftApp(rawValue: "Xcode")
       }
     }
   }

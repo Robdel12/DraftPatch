@@ -7,6 +7,18 @@
 
 import Foundation
 
+class MockLLMManager: LLMManager {
+  override func getService(for provider: ChatModel.LLMProvider) -> LLMService {
+    return MockLLMService.shared
+  }
+
+  override func loadLLMs(_ settings: Settings?) async -> [ChatModel] {
+    return try! await MockLLMService.shared.fetchAvailableModels().map {
+      ChatModel(name: $0, provider: .ollama)
+    }
+  }
+}
+
 class MockLLMService: LLMService {
   static let shared = MockLLMService()
 

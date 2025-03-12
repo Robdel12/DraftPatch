@@ -210,7 +210,7 @@ struct ModelPickerPopoverView: View {
             isPopoverPresented = false
 
             Task {
-              await viewModel.loadOllamaModels()
+              await viewModel.loadLLMs()
             }
           }
         }

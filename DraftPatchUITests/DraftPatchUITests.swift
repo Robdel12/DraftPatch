@@ -8,28 +8,10 @@
 import XCTest
 
 final class DraftPatchUITests: XCTestCase {
-  //  override func setUpWithError() throws {
-  //    // Put setup code here. This method is called before the invocation of each test method in the class.
-  //
-  //    // In UI tests it is usually best to stop immediately when a failure occurs.
-  //    continueAfterFailure = false
-  //
-  //    // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-  //  }
-  //
-  //  override func tearDownWithError() throws {
-  //    // Put teardown code here. This method is called after the invocation of each test method in the class.
-  //  }
-  //
-  //  @MainActor
-  //  func testExample() throws {
-  //    // UI tests must launch the application that they test.
-  //    let app = XCUIApplication()
-  //    app.launch()
-  //
-  //    // Use XCTAssert and related functions to verify your tests produce the correct results.
-  //  }
-  //
+  override func setUpWithError() throws {
+    continueAfterFailure = false
+  }
+
   //  @MainActor
   //  func testLaunchPerformance() throws {
   //    if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
@@ -39,4 +21,72 @@ final class DraftPatchUITests: XCTestCase {
   //      }
   //    }
   //  }
+
+  @MainActor
+  func testCommandNCreatesNewChatThread() throws {
+    let app = XCUIApplication()
+    app.launchArguments.append("UI_TEST_MODE")
+    app.launch()
+
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+
+    app.typeKey("n", modifierFlags: .command)
+
+    // Optionally, ensure new thread is selected
+     app.typeKey("d", modifierFlags: .command)
+
+    let newConversationTitle = app.staticTexts["New Conversation"]
+    XCTAssertTrue(
+      newConversationTitle.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
+
+    let noMessagesPlaceholder = app.staticTexts["No messages yet"]
+    XCTAssertTrue(
+      noMessagesPlaceholder.waitForExistence(timeout: 2),
+      "Placeholder for no messages should exist in new conversation")
+  }
+
+  @MainActor
+  func testAppLaunchShowsEmptyState() throws {
+    let app = XCUIApplication()
+    app.launchArguments.append("UI_TEST_MODE")
+    app.launch()
+
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+
+    let noChatSelectedText = app.staticTexts["No chat selected"]
+    XCTAssertTrue(
+      noChatSelectedText.waitForExistence(timeout: 2), "The 'No chat selected' text is not visible")
+
+    let startDraftingText = app.staticTexts["Select a chat and start drafting!"]
+    XCTAssertTrue(
+      startDraftingText.waitForExistence(timeout: 2),
+      "The 'Select a chat and start drafting!' text is not visible")
+
+    let checkeredFlagImage = app.images["flag.checkered"]
+    XCTAssertTrue(checkeredFlagImage.waitForExistence(timeout: 2), "The checkered flag image is not visible")
+  }
+
+  @MainActor
+  func testCommandDShowsDraftingText() throws {
+    let app = XCUIApplication()
+    app.launchArguments.append("UI_TEST_MODE")
+    app.launch()
+
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+
+    // Create a new chat using Command + N
+    app.typeKey("n", modifierFlags: .command)
+
+    let title = app.staticTexts["New Conversation"]
+    XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
+
+    // Press Command + D
+    app.typeKey("d", modifierFlags: .command)
+
+    // Verify "Drafting with" text appears
+    let draftingTextElement = app.staticTexts["Drafting with Xcode • Unknown"]
+    XCTAssertTrue(draftingTextElement.waitForExistence(timeout: 2), "The 'Drafting with' text did not appear")
+
+    app.typeKey("d", modifierFlags: .command)
+  }
 }

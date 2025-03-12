@@ -20,4 +20,35 @@ class LLMManager {
       return ClaudeService.shared
     }
   }
+
+  func loadLLMs(_ settings: Settings?) async -> [ChatModel] {
+    var availableModels: [ChatModel] = []
+
+    let providers: [(enabled: Bool, service: LLMService, provider: ChatModel.LLMProvider)] = [
+      (settings?.ollamaConfig?.enabled ?? false, OllamaService.shared, .ollama),
+      (settings?.openAIConfig?.enabled ?? false, OpenAIService.shared, .openai),
+      (settings?.geminiConfig?.enabled ?? false, GeminiService.shared, .gemini),
+      (settings?.anthropicConfig?.enabled ?? false, ClaudeService.shared, .anthropic),
+    ]
+
+    await withTaskGroup(of: [ChatModel].self) { group in
+      for provider in providers where provider.enabled {
+        group.addTask {
+          do {
+            let models = try await provider.service.fetchAvailableModels()
+            return models.map { ChatModel(name: $0, provider: provider.provider) }
+          } catch {
+            print("Error loading \(provider.provider) models: \(error)")
+            return []
+          }
+        }
+      }
+
+      for await models in group {
+        availableModels.append(contentsOf: models)
+      }
+    }
+
+    return Array(Set(availableModels))  // Remove duplicates if any
+  }
 }

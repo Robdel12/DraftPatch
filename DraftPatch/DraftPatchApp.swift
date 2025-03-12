@@ -21,22 +21,44 @@ struct DraftPatchApp: App {
         Settings.self,
       ])
 
-      let configuration = ModelConfiguration(
-        schema: schema,
-        isStoredInMemoryOnly: false
-      )
+      if ProcessInfo.processInfo.arguments.contains("UI_TEST_MODE") {
+        let testConfiguration = ModelConfiguration(
+          schema: schema,
+          isStoredInMemoryOnly: true
+        )
 
-      self.modelContainer = try ModelContainer(
-        for: ChatThread.self, ChatMessage.self, Settings.self,
-        configurations: configuration
-      )
+        self.modelContainer = try ModelContainer(
+          for: ChatThread.self, ChatMessage.self, Settings.self,
+          configurations: testConfiguration
+        )
+      } else {
+        let configuration = ModelConfiguration(
+          schema: schema,
+          isStoredInMemoryOnly: false
+        )
+
+        self.modelContainer = try ModelContainer(
+          for: ChatThread.self, ChatMessage.self, Settings.self,
+          configurations: configuration
+        )
+      }
     } catch {
       fatalError("Error creating ModelContainer: \(error)")
     }
 
     let ctx = ModelContext(self.modelContainer)
     let repository = SwiftDataChatThreadRepository(context: ctx)
-    _viewModel = StateObject(wrappedValue: DraftPatchViewModel(repository: repository))
+
+    if ProcessInfo.processInfo.arguments.contains("UI_TEST_MODE") {
+      _viewModel = StateObject(
+        wrappedValue: DraftPatchViewModel(
+          repository: repository,
+          llmManager: MockLLMManager()
+        )
+      )
+    } else {
+      _viewModel = StateObject(wrappedValue: DraftPatchViewModel(repository: repository))
+    }
 
     // Request accessibility permissions for drafting
     DraftingService.shared.checkAccessibilityPermission()

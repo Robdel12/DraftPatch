@@ -16,6 +16,13 @@ struct ChatView: View {
     if let thread = viewModel.selectedThread {
       VStack {
         VStack(spacing: 0) {
+          if thread.messages.isEmpty {
+            Text("No messages yet")
+              .foregroundColor(.gray).opacity(0.01)
+              .padding()
+              .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+          }
+
           ScrollView {
             VStack(spacing: 0) {
               VStack(spacing: 8) {
