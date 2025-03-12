@@ -25,7 +25,7 @@ class DraftPatchViewModel: ObservableObject {
   @Published var availableModels: [ChatModel] = []
   @Published var selectedModel: ChatModel = ChatModel(name: "Default", provider: .ollama)
   @Published var thinking: Bool = false
-  @Published var visibleScrollHeight: CGFloat = 0
+  @Published var showSettings: Bool = false
 
   @Published var isDraftingEnabled: Bool = false
   @Published var selectedDraftApp: DraftApp? = nil {

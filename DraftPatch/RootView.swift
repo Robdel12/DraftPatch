@@ -12,8 +12,6 @@ struct RootView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
   @FocusState var isTextFieldFocused: Bool
 
-  @State private var showSettings: Bool = false
-
   var body: some View {
     NavigationSplitView {
       List {
@@ -26,7 +24,7 @@ struct RootView: View {
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                  thread == viewModel.selectedThread && !showSettings
+                  thread == viewModel.selectedThread && !viewModel.showSettings
                     ? Color.accentColor.opacity(0.2)
                     : Color.clear
                 )
@@ -48,7 +46,7 @@ struct RootView: View {
 
       VStack {
         Button {
-          showSettings.toggle()
+          viewModel.showSettings.toggle()
         } label: {
           HStack {
             Image(systemName: "gear")
@@ -60,12 +58,12 @@ struct RootView: View {
       }
       .padding()
       .frame(maxWidth: .infinity, alignment: .leading)
-      .background(showSettings ? Color.accentColor.opacity(0.2) : Color.clear)
+      .background(viewModel.showSettings ? Color.accentColor.opacity(0.2) : Color.clear)
     } detail: {
       NavigationStack {
         ChatView(isTextFieldFocused: $isTextFieldFocused)
           .environmentObject(viewModel)
-          .navigationDestination(isPresented: $showSettings) {
+          .navigationDestination(isPresented: $viewModel.showSettings) {
             SettingsView()
               .environmentObject(viewModel)
           }
@@ -74,12 +72,12 @@ struct RootView: View {
     .navigationTitle("")
     .toolbar {
       ToolbarItem(placement: .navigation) {
-        if let thread = viewModel.selectedThread, !showSettings {
+        if let thread = viewModel.selectedThread, !viewModel.showSettings {
           RenamableTitleView(thread: thread)
         }
       }
 
-      if !showSettings {
+      if !viewModel.showSettings {
         ToolbarItem(placement: .automatic) {
           ModelPickerPopoverView()
             .environmentObject(viewModel)

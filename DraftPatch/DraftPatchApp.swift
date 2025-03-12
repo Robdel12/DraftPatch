@@ -71,5 +71,8 @@ struct DraftPatchApp: App {
         .environmentObject(viewModel)
         .preferredColorScheme(.dark)
     }
+    .commands {
+      DraftPatchCommands(viewModel: viewModel)
+    }
   }
 }
