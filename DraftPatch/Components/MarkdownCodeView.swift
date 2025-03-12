@@ -6,7 +6,6 @@
 //
 
 import AppKit
-import Highlightr
 import MarkdownUI
 import SwiftUI
 
@@ -73,17 +72,13 @@ struct SyntaxHighlightedCodeBlock: View {
   }
 
   private func highlightCode() {
-    guard let highlightr = Highlightr() else {
-      highlightedText = AttributedString(code)
-      return
-    }
+    let currentCode = code
+    let language = self.language
 
-    highlightr.setTheme(to: "atom-one-dark")
+    let highlighted = HighlightrService.shared.highlight(code: currentCode, language: language)
+    let attributed = AttributedString(highlighted)
 
-    let nsAttributedString =
-      highlightr.highlight(code, as: language ?? "swift") ?? NSAttributedString(string: code)
-
-    highlightedText = AttributedString(nsAttributedString)
+    self.highlightedText = attributed
   }
 
   private func copyToClipboard() {

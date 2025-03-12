@@ -26,7 +26,6 @@ class DraftPatchViewModel: ObservableObject {
   @Published var selectedModel: ChatModel = ChatModel(name: "Default", provider: .ollama)
   @Published var thinking: Bool = false
   @Published var visibleScrollHeight: CGFloat = 0
-  @Published var streamingUpdate: UUID = UUID()
 
   @Published var isDraftingEnabled: Bool = false
   @Published var selectedDraftApp: DraftApp? = nil {
@@ -193,54 +192,63 @@ class DraftPatchViewModel: ObservableObject {
 
     if let tokenStream = getTokenStream(for: thread, with: messagesPayload) {
       thinking = true
-      do {
-        try repository.save()
-      } catch {
-        print("Error saving context: \(error)")
-      }
 
+      // Create an assistant message to hold the streaming text
       let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
       thread.messages.append(assistantMsg)
 
-      do {
-        var firstLoop = true
+      // Use a buffer to batch updates
+      var textBuffer = ""
+      var updateTimer: Timer?
 
-        for try await partialText in tokenStream {
-          if firstLoop {
-            firstLoop = false
-            thread.updatedAt = Date()
+      Task {
+        var firstLoop = true
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
+          DispatchQueue.main.async {
+            if !textBuffer.isEmpty {
+              assistantMsg.text += textBuffer
+              textBuffer = ""
+            }
+          }
+        }
+
+        do {
+          for try await partialText in tokenStream {
+            if firstLoop {
+              firstLoop = false
+              thread.updatedAt = Date()
+            }
+
+            textBuffer += partialText
           }
 
-          assistantMsg.text += partialText
-          streamingUpdate = UUID()
-        }
+          // Ensure the final buffered text is added
+          DispatchQueue.main.async {
+            assistantMsg.text += textBuffer
+            assistantMsg.streaming = false
+          }
 
-        assistantMsg.streaming = false
-        do {
+          updateTimer?.invalidate()
+
+          // Save the thread *after* the streaming is complete
           try repository.save()
-        } catch {
-          print("Error saving context: \(error)")
-        }
 
-        if thread.title == "New Conversation" {
-          do {
-            let title = try await generateTitle(for: messageText, using: thread.model)
-            thread.title = title
+          if thread.title == "New Conversation" {
             do {
+              let title = try await generateTitle(for: messageText, using: thread.model)
+              thread.title = title
               try repository.save()
             } catch {
-              print("Error saving context: \(error)")
+              print("Error generating thread title: \(error)")
             }
-          } catch {
-            print("Error generating thread title: \(error)")
           }
+        } catch {
+          print("Error during streaming: \(error)")
+          errorMessage = error.localizedDescription
         }
-      } catch {
-        print("Error during streaming: \(error)")
-        errorMessage = error.localizedDescription
-      }
 
-      thinking = false
+        thinking = false
+      }
     }
   }
 

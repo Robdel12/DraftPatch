@@ -15,7 +15,7 @@ enum Role: String, Codable {
 }
 
 @Model
-class ChatMessage: Equatable {
+final class ChatMessage: Equatable, @unchecked Sendable {
   @Attribute(.unique) var id: UUID
   var text: String
   var role: Role
