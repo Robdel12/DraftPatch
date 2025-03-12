@@ -8,7 +8,7 @@
 import Foundation
 
 struct ClaudeService: LLMService {
-  @MainActor static let shared = ClaudeService()
+  static let shared = ClaudeService()
 
   let endpointURL = URL(string: "https://api.anthropic.com/v1")!
   let apiKey: String? = KeychainHelper.shared.load(for: "anthropic_api_key")

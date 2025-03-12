@@ -8,7 +8,7 @@
 import Foundation
 
 final class OllamaService: LLMService {
-  @MainActor static let shared = OllamaService()
+  static let shared = OllamaService()
 
   var endpointURL = URL(string: "http://localhost:11434")!
   var apiKey: String? = nil

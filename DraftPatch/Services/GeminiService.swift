@@ -8,7 +8,7 @@
 import Foundation
 
 struct GeminiService: LLMService {
-  @MainActor static let shared = GeminiService()
+  static let shared = GeminiService()
 
   let endpointURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models")!
   let apiKey: String? = KeychainHelper.shared.load(for: "gemini_api_key") ?? ""

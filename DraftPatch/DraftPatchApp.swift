@@ -35,7 +35,8 @@ struct DraftPatchApp: App {
     }
 
     let ctx = ModelContext(self.modelContainer)
-    _viewModel = StateObject(wrappedValue: DraftPatchViewModel(context: ctx))
+    let repository = SwiftDataChatThreadRepository(context: ctx)
+    _viewModel = StateObject(wrappedValue: DraftPatchViewModel(repository: repository))
 
     // Request accessibility permissions for drafting
     DraftingService.shared.checkAccessibilityPermission()

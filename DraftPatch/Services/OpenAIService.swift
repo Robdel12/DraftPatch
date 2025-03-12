@@ -8,7 +8,7 @@
 import Foundation
 
 struct OpenAIService: LLMService {
-  @MainActor static let shared = OpenAIService()
+  static let shared = OpenAIService()
 
   let endpointURL: URL = URL(string: "https://api.openai.com/v1")!
   let apiKey: String? = KeychainHelper.shared.load(for: "openai_api_key") ?? ""

@@ -10,7 +10,8 @@ import SwiftUI
 
 @MainActor
 class DraftPatchViewModel: ObservableObject {
-  private var context: ModelContext
+  private var repository: ChatThreadRepository
+  private var llmManager: LLMManager
 
   @Published var chatThreads: [ChatThread] = []
   @Published var selectedThread: ChatThread? {
@@ -38,14 +39,55 @@ class DraftPatchViewModel: ObservableObject {
   @Published var settings: Settings? = nil
   @Published var errorMessage: String? = nil
 
-  init(context: ModelContext) {
-    self.context = context
+  init(repository: ChatThreadRepository, llmManager: LLMManager = .shared) {
+    self.repository = repository
+    self.llmManager = llmManager
 
     loadSettings()
     loadThreads()
 
     Task {
       await loadLLMs()
+    }
+  }
+
+  func loadThreads() {
+    do {
+      chatThreads = try repository.fetchThreads()
+      selectedThread = chatThreads.first
+    } catch {
+      print("Error loading threads: \(error)")
+      chatThreads = []
+      selectedThread = nil
+    }
+  }
+
+  func loadSettings() {
+    do {
+      settings = try repository.fetchSettings()
+
+      if settings != nil, let ollamaEndpontURL = settings?.ollamaConfig?.endpointURL {
+        OllamaService.shared.endpointURL = ollamaEndpontURL
+      }
+    } catch {
+      print("Error loading settings: \(error)")
+    }
+  }
+
+  func deleteThread(_ thread: ChatThread) {
+    do {
+      try repository.deleteThread(thread)
+      try repository.save()
+
+      if let index = chatThreads.firstIndex(where: { $0.id == thread.id }) {
+        chatThreads.remove(at: index)
+      }
+
+      if selectedThread == thread {
+        selectedThread = chatThreads.first
+      }
+    } catch {
+      print("Error deleting thread: \(error)")
     }
   }
 
@@ -122,35 +164,6 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
 
-  private func loadThreads() {
-    let descriptor = FetchDescriptor<ChatThread>(
-      sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-    )
-
-    do {
-      chatThreads = try context.fetch(descriptor)
-      selectedThread = chatThreads.first
-    } catch {
-      print("Error loading threads: \(error)")
-      chatThreads = []
-      selectedThread = nil
-    }
-  }
-
-  private func loadSettings() {
-    let descriptor = FetchDescriptor<Settings>()
-
-    do {
-      settings = try context.fetch(descriptor).first
-
-      if settings != nil, let ollamaEndpontURL = settings?.ollamaConfig?.endpointURL {
-        OllamaService.shared.endpointURL = ollamaEndpontURL
-      }
-    } catch {
-      print("Error loading settings: \(error)")
-    }
-  }
-
   func toggleDraftWithLastApp() {
     if let lastAppDraftedWith = settings?.lastAppDraftedWith {
       if isDraftingEnabled {
@@ -217,10 +230,11 @@ class DraftPatchViewModel: ObservableObject {
       return
     }
 
+    // If we're working with a draft thread, persist it
     if let draftThread, draftThread == thread {
-      context.insert(thread)
       do {
-        try context.save()
+        try repository.insertThread(thread)
+        try repository.save()
         chatThreads.insert(thread, at: 0)
       } catch {
         print("Error saving new thread: \(error)")
@@ -238,7 +252,11 @@ class DraftPatchViewModel: ObservableObject {
 
     if let tokenStream = getTokenStream(for: thread, with: messagesPayload) {
       thinking = true
-      saveContext()
+      do {
+        try repository.save()
+      } catch {
+        print("Error saving context: \(error)")
+      }
 
       let assistantMsg = ChatMessage(text: "", role: .assistant, streaming: true)
       thread.messages.append(assistantMsg)
@@ -257,13 +275,21 @@ class DraftPatchViewModel: ObservableObject {
         }
 
         assistantMsg.streaming = false
-        saveContext()
+        do {
+          try repository.save()
+        } catch {
+          print("Error saving context: \(error)")
+        }
 
         if thread.title == "New Conversation" {
           do {
             let title = try await generateTitle(for: messageText, using: thread.model)
             thread.title = title
-            saveContext()
+            do {
+              try repository.save()
+            } catch {
+              print("Error saving context: \(error)")
+            }
           } catch {
             print("Error generating thread title: \(error)")
           }
@@ -277,72 +303,17 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
 
-  private func saveContext() {
-    do {
-      try context.save()
-      objectWillChange.send()
-    } catch {
-      print("Error saving context: \(error)")
-    }
-  }
-
-  func deleteThread(_ thread: ChatThread) {
-    context.delete(thread)
-
-    do {
-      try context.save()
-
-      if let index = chatThreads.firstIndex(where: { $0.id == thread.id }) {
-        chatThreads.remove(at: index)
-      }
-
-      if selectedThread == thread {
-        selectedThread = chatThreads.first
-      }
-    } catch {
-      print("Error deleting thread: \(error)")
-    }
-  }
-
   /// Determines the correct service and returns a token stream.
   private func getTokenStream(for thread: ChatThread, with messages: [ChatMessagePayload])
     -> AsyncThrowingStream<String, Error>?
   {
-    switch thread.model.provider {
-    case .ollama:
-      return OllamaService.shared.streamChat(
-        messages: messages,
-        modelName: thread.model.name
-      )
-    case .openai:
-      return OpenAIService.shared.streamChat(
-        messages: messages,
-        modelName: thread.model.name
-      )
-    case .gemini:
-      return GeminiService.shared.streamChat(
-        messages: messages,
-        modelName: thread.model.name
-      )
-    case .anthropic:
-      return ClaudeService.shared.streamChat(
-        messages: messages,
-        modelName: thread.model.name
-      )
-    }
+    return llmManager.getService(for: thread.model.provider)
+      .streamChat(messages: messages, modelName: thread.model.name)
   }
 
   /// Calls the appropriate service to generate a title based on the provider.
   private func generateTitle(for text: String, using model: ChatModel) async throws -> String {
-    switch model.provider {
-    case .ollama:
-      return try await OllamaService.shared.generateTitle(for: text, modelName: model.name)
-    case .openai:
-      return try await OpenAIService.shared.generateTitle(for: text, modelName: model.name)
-    case .gemini:
-      return try await GeminiService.shared.generateTitle(for: text, modelName: model.name)
-    case .anthropic:
-      return try await ClaudeService.shared.generateTitle(for: text, modelName: model.name)
-    }
+    return try await llmManager.getService(for: model.provider)
+      .generateTitle(for: text, modelName: model.name)
   }
 }
