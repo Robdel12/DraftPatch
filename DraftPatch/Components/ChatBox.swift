@@ -66,6 +66,7 @@ struct ChatBoxView: View {
       }
 
       TextField(thinking ? "Sending..." : "Draft a message", text: $userMessage, axis: .vertical)
+        .accessibilityIdentifier("Chatbox")
         .multilineTextAlignment(.leading)
         .font(.system(size: 14, weight: .regular, design: .rounded))
         .textFieldStyle(PlainTextFieldStyle())
@@ -104,6 +105,7 @@ struct ChatBoxView: View {
             .foregroundStyle(selectedDraftApp != nil ? .blue : .gray)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Open Drafting Options")
         .popover(isPresented: $isShowingPopover, arrowEdge: .top) {
           DraftingPopover(selectedDraftApp: $selectedDraftApp, isShowingPopover: $isShowingPopover)
         }

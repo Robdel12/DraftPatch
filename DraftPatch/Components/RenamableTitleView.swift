@@ -28,6 +28,7 @@ struct RenamableTitleView: View {
             isRenaming = false
           }
         )
+        .accessibilityIdentifier("renameThreadTextField")
         .textFieldStyle(.roundedBorder)
         .frame(maxWidth: 200)
         .focused($isTextFieldFocused)

@@ -31,16 +31,19 @@ struct RootView: View {
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("ChatThread_\(thread.title)")
             .contextMenu {
               Button(role: .destructive) {
                 viewModel.deleteThread(thread)
               } label: {
                 Text("Delete")
               }
+              .accessibilityIdentifier("DeleteChatThread_\(thread.title)")
             }
           }
         }
       }
+      .accessibilityIdentifier("ChatList")
 
       Spacer()
 

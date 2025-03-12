@@ -46,6 +46,8 @@ struct ModelPickerPopoverView: View {
       .padding(8)
       .contentShape(Rectangle())
     }
+    .accessibilityLabel(viewModel.selectedModel.name)
+    .accessibilityIdentifier("ModelSelectorButton")
     .keyboardShortcut("e", modifiers: .command)
     .buttonStyle(.plain)
     .background(
@@ -62,6 +64,7 @@ struct ModelPickerPopoverView: View {
             .foregroundColor(.secondary)
           TextField("Search or download a model", text: $searchText)
             .textFieldStyle(RoundedBorderTextFieldStyle())
+            .accessibilityIdentifier("ModelSearchField")
             .focused($isSearchFieldFocused)
             .onAppear {
               isSearchFieldFocused = true

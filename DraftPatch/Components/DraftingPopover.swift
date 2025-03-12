@@ -20,36 +20,40 @@ struct DraftingPopover: View {
         let selected = selectedDraftApp == app
         let isDisabled = selectedDraftApp != nil && !selected
 
-        HStack {
-          HStack(spacing: 8) {
-            Image(app.name)
-              .resizable()
-              .scaledToFit()
-              .frame(width: 32, height: 32)
-
-            Text(app.name)
-              .foregroundStyle(isDisabled ? .gray : .primary)
+        Button(action: {
+          if selected {
+            selectedDraftApp = nil
+          } else {
+            selectedDraftApp = app
           }
 
-          Spacer()
+          isShowingPopover = false
+        }) {
+          HStack {
+            HStack(spacing: 8) {
+              Image(app.name)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 32, height: 32)
 
-          Button(action: {
-            if selected {
-              selectedDraftApp = nil
-            } else {
-              selectedDraftApp = app
+              Text(app.name)
+                .foregroundStyle(isDisabled ? .gray : .primary)
             }
 
-            isShowingPopover = false
-          }) {
+            Spacer()
+
             Image(systemName: selected ? "xmark.circle.fill" : "checkmark.circle")
               .foregroundStyle(selected ? .red : (isDisabled ? .gray : .blue))
               .font(.title3)
           }
-          .buttonStyle(.plain)
-          .disabled(isDisabled)
+          .contentShape(Rectangle())
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 8)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("Draft with \(app.name)")
+        .disabled(isDisabled)
       }
     }
     .padding()
