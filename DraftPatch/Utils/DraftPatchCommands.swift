@@ -19,14 +19,14 @@ struct DraftPatchCommands: Commands {
     }
 
     CommandGroup(before: .textEditing) {
-      Button("Toggle drafting") {
+      Button("Toggle Drafting") {
         viewModel.toggleDrafting()
       }
       .keyboardShortcut("d", modifiers: .command)
     }
     
     CommandGroup(before: .textEditing) {
-      Button("Select model") {
+      Button("Select Model") {
         // Hacky, letting it fall through to the pickers shortcut modifier
         // TODO: Move popover state to view model?
       }
@@ -34,7 +34,7 @@ struct DraftPatchCommands: Commands {
     }
 
     CommandGroup(replacing: .appSettings) {
-      Button("Preferences...") {
+      Button("Settings...") {
         viewModel.showSettings.toggle()
       }
       .keyboardShortcut(",", modifiers: .command)

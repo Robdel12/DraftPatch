@@ -87,7 +87,7 @@ final class DraftPatchUITests: XCTestCase {
     let title = app.staticTexts["New Conversation"]
     XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
 
-    let messageField = app.textFields["Chatbox"]
+    let messageField = app.textViews["Chatbox"]
     XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
 
     let messageText = "Hello, how are you?"
@@ -119,7 +119,7 @@ final class DraftPatchUITests: XCTestCase {
     let title = app.staticTexts["New Conversation"]
     XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
 
-    let messageField = app.textFields["Chatbox"]
+    let messageField = app.textViews["Chatbox"]
     XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
 
     let messageText = "Hello, how are you?"
@@ -192,7 +192,7 @@ final class DraftPatchUITests: XCTestCase {
     XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
 
     // Send a new chat message
-    let messageField = app.textFields["Chatbox"]
+    let messageField = app.textViews["Chatbox"]
     XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
 
     let messageText = "Test message"
@@ -269,7 +269,7 @@ final class DraftPatchUITests: XCTestCase {
     let title = app.staticTexts["New Conversation"]
     XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
 
-    let messageField = app.textFields["Chatbox"]
+    let messageField = app.textViews["Chatbox"]
     XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
 
     let messageText = "Hello!"

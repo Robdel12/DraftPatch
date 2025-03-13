@@ -21,6 +21,7 @@ struct ChatBoxView: View {
   @State private var selectedText: String?
   @State private var lineNumbers: (start: Int, end: Int)?
   @State private var fileName: String?
+  @State private var textEditorHeight: CGFloat = 15
 
   var draftingText: String {
     guard let app = selectedDraftApp else { return "" }
@@ -66,34 +67,13 @@ struct ChatBoxView: View {
         }
       }
 
-      TextField(thinking ? "Sending..." : "Draft a message", text: $userMessage, axis: .vertical)
-        .accessibilityIdentifier("Chatbox")
-        .multilineTextAlignment(.leading)
-        .font(.system(size: 14, weight: .regular, design: .rounded))
-        .textFieldStyle(PlainTextFieldStyle())
-        .focused($isTextFieldFocused)
-        .disabled(thinking)
-        .onAppear {
-          updateSelectedTextDetails()
-          DispatchQueue.main.async {
-            isTextFieldFocused = true
-          }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) {
-          _ in
-          updateSelectedTextDetails()
-        }
-        .onKeyPress { keyPress in
-          if keyPress.modifiers == .shift && keyPress.key == .return {
-            userMessage += "\n"
-            return .handled
-          } else if keyPress.modifiers.isEmpty && keyPress.key == .return {
-            onSubmit()
-            return .handled
-          } else {
-            return .ignored
-          }
-        }
+      ChatBoxEditor(
+        userMessage: $userMessage,
+        isTextFieldFocused: $isTextFieldFocused,
+        thinking: thinking,
+        onSubmit: onSubmit,
+        updateSelectedTextDetails: updateSelectedTextDetails
+      )
 
       Divider()
 
