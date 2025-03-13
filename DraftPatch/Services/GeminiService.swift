@@ -7,11 +7,13 @@
 
 import Foundation
 
-struct GeminiService: LLMService {
+final class GeminiService: LLMService {
   static let shared = GeminiService()
 
   let endpointURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models")!
   let apiKey: String? = KeychainHelper.shared.load(for: "gemini_api_key") ?? ""
+
+  var isCancelled: Bool = false
 
   // MARK: - Fetching Available Models
   func fetchAvailableModels() async throws -> [String] {
@@ -63,7 +65,9 @@ struct GeminiService: LLMService {
 
   // MARK: - Streaming Chat
   func streamChat(messages: [ChatMessagePayload], modelName: String) -> AsyncThrowingStream<String, Error> {
-    AsyncThrowingStream { continuation in
+    isCancelled = false
+
+    return AsyncThrowingStream { continuation in
       Task {
         do {
           guard let apiKey = apiKey, !apiKey.isEmpty else {
@@ -130,6 +134,11 @@ struct GeminiService: LLMService {
 
           // Read lines from SSE: each line typically starts with "data: "
           for try await line in byteStream.lines {
+            if self.isCancelled {
+              continuation.finish()
+              return
+            }
+
             guard line.hasPrefix("data: ") else { continue }
             let jsonString = String(line.dropFirst("data: ".count))
             guard let data = jsonString.data(using: .utf8) else { continue }
@@ -157,6 +166,10 @@ struct GeminiService: LLMService {
         }
       }
     }
+  }
+  
+  func cancelStreamChat() {
+    isCancelled = true
   }
 
   // MARK: - Single Chat Completion (Non-Streaming)

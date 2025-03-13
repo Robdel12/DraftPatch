@@ -14,6 +14,8 @@ protocol LLMService {
   // Optional token or API key for authentication
   var apiKey: String? { get }
 
+  var isCancelled: Bool { get set }
+
   // Fetch the list of available model names
   func fetchAvailableModels() async throws -> [String]
 
@@ -22,6 +24,9 @@ protocol LLMService {
     messages: [ChatMessagePayload],
     modelName: String
   ) -> AsyncThrowingStream<String, Error>
+
+  // Cancels the current streaming chat response
+  func cancelStreamChat()
 
   // Perform a single chat completion, suitable for one-off requests (e.g., generating a title)
   func singleChatCompletion(

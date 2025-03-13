@@ -7,11 +7,14 @@
 
 import Foundation
 
-struct ClaudeService: LLMService {
+final class ClaudeService: LLMService {
   static let shared = ClaudeService()
 
   let endpointURL = URL(string: "https://api.anthropic.com/v1")!
   let apiKey: String? = KeychainHelper.shared.load(for: "anthropic_api_key")
+
+  var streamChatTask: Task<Void, Never>?
+  var isCancelled = false
 
   /// Fetches the list of available models from Anthropic
   func fetchAvailableModels() async throws -> [String] {
@@ -50,23 +53,20 @@ struct ClaudeService: LLMService {
     messages: [ChatMessagePayload],
     modelName: String
   ) -> AsyncThrowingStream<String, Error> {
-    AsyncThrowingStream { continuation in
-      Task {
+    isCancelled = false
+
+    return AsyncThrowingStream { continuation in
+      self.streamChatTask = Task {
         do {
           let url = endpointURL.appendingPathComponent("messages")
-          print("[ClaudeService] streamChat() - Constructing request for:", url.absoluteString)
 
           var request = URLRequest(url: url)
           request.httpMethod = "POST"
 
-          // Set Anthropic headers
           request.setValue(apiKey ?? "", forHTTPHeaderField: "x-api-key")
           request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
           request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-          print("[ClaudeService] Model name:", modelName)
-
-          // Convert our [ChatMessagePayload] into Anthropic’s required structure
           let anthropicMessages = messages.map { msg -> [String: Any] in
             [
               "role": msg.role.rawValue,
@@ -74,7 +74,6 @@ struct ClaudeService: LLMService {
             ]
           }
 
-          // Build request body
           let requestBody: [String: Any] = [
             "model": modelName,
             "messages": anthropicMessages,
@@ -92,7 +91,6 @@ struct ClaudeService: LLMService {
           }
 
           if httpResponse.statusCode != 200 {
-            // Read raw response body
             var errorData = Data()
             for try await byte in bytesStream {
               errorData.append(byte)
@@ -131,6 +129,10 @@ struct ClaudeService: LLMService {
 
           var currentEvent: String?
           for try await line in bytesStream.lines {
+            if self.isCancelled {
+              continuation.finish()
+              return
+            }
 
             if line.hasPrefix("event: ") {
               currentEvent = String(line.dropFirst("event: ".count))
@@ -145,7 +147,6 @@ struct ClaudeService: LLMService {
                 break
               }
 
-              // Attempt to parse the data JSON
               if let jsonData = jsonString.data(using: .utf8) {
                 do {
                   if let jsonObject = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
@@ -156,12 +157,10 @@ struct ClaudeService: LLMService {
                       let textDelta = deltaObj["text"] as? String,
                       !textDelta.isEmpty
                     {
-                      // Yield the chunk of text
                       continuation.yield(textDelta)
                     }
                   }
                 } catch {
-                  // Not fatal for the entire stream
                   print("[ClaudeService] JSON parsing error:", error.localizedDescription)
                 }
               }
@@ -176,6 +175,11 @@ struct ClaudeService: LLMService {
         }
       }
     }
+  }
+
+  func cancelStreamChat() {
+    isCancelled = true
+    streamChatTask?.cancel()
   }
 
   /// Creates a single (non-streaming) chat completion

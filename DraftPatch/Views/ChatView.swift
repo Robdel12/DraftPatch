@@ -57,6 +57,7 @@ struct ChatView: View {
             isTextFieldFocused: $isTextFieldFocused,
             thinking: viewModel.thinking,
             onSubmit: sendMessage,
+            onCancel: viewModel.cancelStreamingMessage,
             draftWithLastApp: viewModel.toggleDraftWithLastApp
           )
           .padding(.horizontal)

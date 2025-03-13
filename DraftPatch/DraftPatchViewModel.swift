@@ -127,6 +127,12 @@ class DraftPatchViewModel: ObservableObject {
     selectedThread = draftThread
   }
 
+  func cancelStreamingMessage() {
+    if let thread = selectedThread {
+      llmManager.getService(for: thread.model.provider).cancelStreamChat()
+    }
+  }
+
   /// Handle sending a message. If we’re currently working with a draft,
   /// we insert that draft into the context before persisting the message.
   func sendMessage(_ text: String? = nil) async {

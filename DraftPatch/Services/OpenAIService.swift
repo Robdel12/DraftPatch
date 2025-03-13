@@ -7,11 +7,13 @@
 
 import Foundation
 
-struct OpenAIService: LLMService {
+final class OpenAIService: LLMService {
   static let shared = OpenAIService()
 
   let endpointURL: URL = URL(string: "https://api.openai.com/v1")!
   let apiKey: String? = KeychainHelper.shared.load(for: "openai_api_key") ?? ""
+
+  var isCancelled: Bool = false
 
   func fetchAvailableModels() async throws -> [String] {
     let url = endpointURL.appendingPathComponent("models")
@@ -46,7 +48,9 @@ struct OpenAIService: LLMService {
     messages: [ChatMessagePayload],
     modelName: String
   ) -> AsyncThrowingStream<String, Error> {
-    AsyncThrowingStream { continuation in
+    isCancelled = false
+
+    return AsyncThrowingStream { continuation in
       Task {
         do {
           let url = endpointURL.appendingPathComponent("chat/completions")
@@ -70,6 +74,11 @@ struct OpenAIService: LLMService {
           }
 
           for try await line in stream.lines {
+            if self.isCancelled {
+              continuation.finish()
+              return
+            }
+
             guard line.hasPrefix("data: ") else {
               continue
             }
@@ -107,6 +116,10 @@ struct OpenAIService: LLMService {
         }
       }
     }
+  }
+
+  func cancelStreamChat() {
+    isCancelled = true
   }
 
   func singleChatCompletion(

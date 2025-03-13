@@ -12,6 +12,7 @@ final class OllamaService: LLMService {
 
   var endpointURL = URL(string: "http://localhost:11434")!
   var apiKey: String? = nil
+  var isCancelled = false
 
   func fetchAvailableModels() async throws -> [String] {
     let url = endpointURL.appendingPathComponent("api/tags")
@@ -76,7 +77,9 @@ final class OllamaService: LLMService {
     messages: [ChatMessagePayload],
     modelName: String
   ) -> AsyncThrowingStream<String, Error> {
-    AsyncThrowingStream { continuation in
+    isCancelled = false
+
+    return AsyncThrowingStream { continuation in
       Task {
         do {
           let url = endpointURL.appendingPathComponent("api/chat")
@@ -102,6 +105,11 @@ final class OllamaService: LLMService {
           let (stream, _) = try await URLSession.shared.bytes(for: request)
 
           for try await line in stream.lines {
+            if self.isCancelled {
+              continuation.finish()
+              return
+            }
+
             guard let data = line.data(using: .utf8), !data.isEmpty else {
               continue
             }
@@ -126,6 +134,10 @@ final class OllamaService: LLMService {
         }
       }
     }
+  }
+
+  func cancelStreamChat() {
+    isCancelled = true
   }
 
   func pullModel(modelName: String) -> AsyncThrowingStream<[String: Any], Error> {

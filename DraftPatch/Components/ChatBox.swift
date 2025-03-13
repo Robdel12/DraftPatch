@@ -14,6 +14,7 @@ struct ChatBoxView: View {
 
   let thinking: Bool
   let onSubmit: () -> Void
+  let onCancel: () -> Void
   let draftWithLastApp: () -> Void
 
   @State private var isShowingPopover = false
@@ -122,13 +123,13 @@ struct ChatBoxView: View {
 
         Spacer()
 
-        Button(action: onSubmit) {
-          Image(systemName: "arrowshape.up.circle.fill")
+        Button(action: thinking ? onCancel : onSubmit) {
+          Image(systemName: thinking ? "stop.circle.fill" : "arrowshape.up.circle.fill")
             .font(.title)
-            .foregroundStyle(thinking ? Color.gray : Color.accentColor)
+            .foregroundStyle(thinking ? Color.red : Color.accentColor)
         }
+        .accessibilityLabel(thinking ? "Stop" : "Send")
         .buttonStyle(.borderless)
-        .disabled(thinking)
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)

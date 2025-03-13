@@ -98,10 +98,11 @@ final class DraftPatchUITests: XCTestCase {
     let sentMessage = app.staticTexts[messageText]
     XCTAssertTrue(sentMessage.waitForExistence(timeout: 2), "Sent message is not visible")
 
-    let replyMessage = app.staticTexts["Hello world!"]
+    let fullMessage =
+      "Hello world! How are you doing today? This is a mocked response from a large language model. Hope this helps!"
+    let replyMessage = app.staticTexts[fullMessage]
 
     XCTAssertTrue(replyMessage.waitForExistence(timeout: 5), "AI reply is not visible")
-
     XCTAssertTrue(replyMessage.frame.minY > sentMessage.frame.minY, "Reply should be below the sent message")
   }
 
@@ -253,5 +254,36 @@ final class DraftPatchUITests: XCTestCase {
     XCTAssertTrue(
       draftingText.waitForExistence(timeout: 2),
       "The drafting text did not update to 'Drafting with Xcode • Unknown'")
+  }
+
+  @MainActor
+  func testStoppingMessageBeforeCompletion() throws {
+    let app = XCUIApplication()
+    app.launchArguments.append("UI_TEST_MODE")
+    app.launch()
+
+    XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
+
+    app.typeKey("n", modifierFlags: .command)
+
+    let title = app.staticTexts["New Conversation"]
+    XCTAssertTrue(title.waitForExistence(timeout: 2), "The chat title is not 'New Conversation'")
+
+    let messageField = app.textFields["Chatbox"]
+    XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
+
+    let messageText = "Hello!"
+    messageField.tap()
+    messageField.typeText(messageText)
+    app.typeKey(.return, modifierFlags: [])
+
+    let stopButton = app.buttons["Stop"]
+    XCTAssertTrue(stopButton.waitForExistence(timeout: 2), "Stop button is not visible")
+    stopButton.tap()
+
+    let fullMessage =
+      "Hello world! How are you doing today? This is a mocked response from a large language model. Hope this helps!"
+    let truncatedMessage = app.staticTexts[fullMessage]
+    XCTAssertFalse(truncatedMessage.exists, "The full response message was printed even after stopping")
   }
 }

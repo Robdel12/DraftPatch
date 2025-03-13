@@ -24,6 +24,7 @@ class MockLLMService: LLMService {
 
   var endpointURL: URL
   var apiKey: String?
+  var isCancelled: Bool = false
 
   init(endpointURL: URL = URL(string: "http://example.com")!, apiKey: String? = nil) {
     self.endpointURL = endpointURL
@@ -39,13 +40,30 @@ class MockLLMService: LLMService {
     modelName: String
   ) -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
-      let tokens = ["Hello ", "world!"]
-      for token in tokens {
-        continuation.yield(token)
-      }
+      let tokens = [
+        "Hello ", "world! ", "How ", "are ", "you ", "doing ", "today? ",
+        "This ", "is ", "a ", "mocked ", "response ", "from ", "a ", "large ",
+        "language ", "model. ", "Hope ", "this ", "helps! ",
+      ]
 
-      continuation.finish()
+      Task {
+        for token in tokens {
+          if self.isCancelled {
+            continuation.finish()
+            return
+          }
+
+          continuation.yield(token)
+          try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        continuation.finish()
+      }
     }
+  }
+
+  func cancelStreamChat() {
+    isCancelled = true
   }
 
   func singleChatCompletion(
