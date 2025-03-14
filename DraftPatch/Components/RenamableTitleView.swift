@@ -50,6 +50,7 @@ struct RenamableTitleView: View {
         Text(thread.title)
           .font(.title2)
           .fontWeight(.bold)
+          .frame(maxWidth: 300)
           .onTapGesture(count: 2) {
             isRenaming = true
           }

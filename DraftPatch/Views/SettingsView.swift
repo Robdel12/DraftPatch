@@ -27,27 +27,33 @@ struct SettingsView: View {
   @State private var isAnthropicEnabled: Bool = false
   @State private var anthropicApiKey: String = ""
 
+  private var isAnyLLMEnabled: Bool {
+    return isOllamaEnabled || isOpenAIEnabled || isGeminiEnabled || isAnthropicEnabled
+  }
+
   var body: some View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          Text("Settings")
-            .font(.largeTitle)
-            .bold()
-
           Text("Default Chat Model")
             .font(.title3)
             .bold()
 
           Divider()
 
-          Picker("Select Default Model", selection: $selectedDefaultModel) {
-            Text("None").tag(nil as ChatModel?)
-            ForEach(viewModel.availableModels) { model in
-              Text(model.name).tag(model as ChatModel?)
+          if isAnyLLMEnabled {
+            Picker("Select Default Model", selection: $selectedDefaultModel) {
+              Text("None").tag(nil as ChatModel?)
+              ForEach(viewModel.availableModels) { model in
+                Text(model.name).tag(model as ChatModel?)
+              }
             }
+            .frame(maxWidth: 420)
+          } else {
+            Text("Enable an LLM provider to pick a default")
+              .foregroundColor(.white)
+              .font(.body)
           }
-          .frame(maxWidth: 420)
 
           Text("Ollama Settings")
             .font(.title3)
@@ -125,6 +131,7 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()
+        .navigationTitle("Settings")
         .onAppear {
           loadSettings()
         }
