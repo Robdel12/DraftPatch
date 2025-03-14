@@ -10,7 +10,7 @@ import SwiftUI
 
 @MainActor
 class DraftPatchViewModel: ObservableObject {
-  private var repository: ChatThreadRepository
+  private var repository: DraftPatchRepository
   private var llmManager: LLMManager
 
   @Published var chatThreads: [ChatThread] = []
@@ -38,7 +38,7 @@ class DraftPatchViewModel: ObservableObject {
   @Published var settings: Settings? = nil
   @Published var errorMessage: String? = nil
 
-  init(repository: ChatThreadRepository, llmManager: LLMManager = LLMManager.shared) {
+  init(repository: DraftPatchRepository, llmManager: LLMManager = LLMManager.shared) {
     self.repository = repository
     self.llmManager = llmManager
 
@@ -99,7 +99,27 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
-    self.availableModels = await llmManager.loadLLMs(settings)
+    do {
+      let storedModels = try repository.fetchStoredModels()
+      self.availableModels = storedModels.map { ChatModel(name: $0.name, provider: $0.provider) }
+    } catch {
+      print("Error loading stored models: \(error)")
+    }
+
+    let fetchedModels = await llmManager.loadLLMs(settings)
+
+    do {
+      for model in fetchedModels {
+        if !self.availableModels.contains(where: { $0.name == model.name && $0.provider == model.provider }) {
+          let storedModel = StoredChatModel(name: model.name, provider: model.provider)
+          try repository.insertStoredModel(storedModel)
+        }
+      }
+    } catch {
+      print("Error saving fetched models: \(error)")
+    }
+
+    self.availableModels = fetchedModels
   }
 
   func toggleDraftWithLastApp() {

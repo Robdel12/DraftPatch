@@ -47,7 +47,7 @@ struct DraftPatchApp: App {
     }
 
     let ctx = ModelContext(self.modelContainer)
-    let repository = SwiftDataChatThreadRepository(context: ctx)
+    let repository = SwiftDataDraftPatchRepository(context: ctx)
 
     if ProcessInfo.processInfo.arguments.contains("UI_TEST_MODE") {
       _viewModel = StateObject(

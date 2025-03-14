@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-class SwiftDataChatThreadRepository: ChatThreadRepository {
+class SwiftDataDraftPatchRepository: DraftPatchRepository {
   private var context: ModelContext
 
   init(context: ModelContext) {
@@ -35,5 +35,15 @@ class SwiftDataChatThreadRepository: ChatThreadRepository {
 
   func deleteThread(_ thread: ChatThread) throws {
     context.delete(thread)
+  }
+
+  func fetchStoredModels() throws -> [StoredChatModel] {
+    let descriptor = FetchDescriptor<StoredChatModel>()
+    return try context.fetch(descriptor)
+  }
+
+  func insertStoredModel(_ model: StoredChatModel) throws {
+    context.insert(model)
+    try context.save()
   }
 }
