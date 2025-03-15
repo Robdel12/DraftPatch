@@ -178,9 +178,11 @@ class DraftPatchViewModel: ObservableObject {
           \(text)
 
           ---
+          <userSelectedCode>
           ```\(ext)
           \(selectedText)
           ```
+          </userSelectedCode>
           """
       } else {
         messageText = text
@@ -188,9 +190,11 @@ class DraftPatchViewModel: ObservableObject {
     } else if let selectedText, !selectedText.isEmpty {
       let ext = fileExtension ?? "txt"
       messageText = """
+        <userSelectedCode>
         ```\(ext)
         \(selectedText)
         ```
+        </userSelectedCode>
         """
     } else {
       return

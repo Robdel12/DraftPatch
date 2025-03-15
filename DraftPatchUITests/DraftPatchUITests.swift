@@ -104,6 +104,9 @@ final class DraftPatchUITests: XCTestCase {
 
     XCTAssertTrue(replyMessage.waitForExistence(timeout: 5), "AI reply is not visible")
     XCTAssertTrue(replyMessage.frame.minY > sentMessage.frame.minY, "Reply should be below the sent message")
+
+    let dynamicSpacer = app.otherElements["dynamicSpacer"]
+    XCTAssertTrue(dynamicSpacer.waitForExistence(timeout: 2), "Dynamic spacer should exist")
   }
 
   @MainActor

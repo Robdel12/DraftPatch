@@ -65,6 +65,7 @@ final class ClaudeService: LLMService {
 
           request.setValue(apiKey ?? "", forHTTPHeaderField: "x-api-key")
           request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+          request.setValue("token-efficient-tools-2025-02-19", forHTTPHeaderField: "anthropic-beta")
           request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
           let anthropicMessages = messages.map { msg -> [String: Any] in

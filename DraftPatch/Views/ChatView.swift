@@ -4,13 +4,17 @@
 //
 //  Created by Robert DeLuca on 3/6/25.
 //
+
 import SwiftUI
 
 struct ChatView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
   @State private var userMessage = ""
-
   @FocusState.Binding var isTextFieldFocused: Bool
+
+  @State private var recentUserMessageId: String? = nil
+  @State private var dynamicSpacerHeight: CGFloat? = nil
+  @State private var scrollViewProxy: ScrollViewProxy?
 
   var body: some View {
     if let thread = viewModel.selectedThread {
@@ -23,22 +27,78 @@ struct ChatView: View {
               .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
           }
 
-          ScrollView {
-            VStack(spacing: 0) {
-              VStack(spacing: 8) {
-                ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
-                  ChatMessageRow(message: msg)
-                    .id(msg.id)
-                    .environmentObject(viewModel)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+          GeometryReader { geometry in
+            ScrollViewReader { scrollProxy in
+              ScrollView {
+                VStack(spacing: 0) {
+                  VStack(spacing: 8) {
+                    ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
+                      ChatMessageRow(message: msg)
+                        .id(msg.id)
+                        .environmentObject(viewModel)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                          GeometryReader { msgGeometry in
+                            Color.clear
+                              .onAppear {
+                                if msg.role == .user, msg.id.uuidString == recentUserMessageId {
+                                  DispatchQueue.main.async {
+                                    let messageHeight = msgGeometry.size.height
+                                    let availableHeight = geometry.size.height
+                                    let calculatedSpacerHeight = max(availableHeight - messageHeight - 100, 0)
+
+                                    withAnimation {
+                                      dynamicSpacerHeight = calculatedSpacerHeight
+                                    }
+                                  }
+                                }
+                              }
+                          }
+                        )
+                    }
+
+                    if let height = dynamicSpacerHeight {
+                      Spacer(minLength: height)
+                        .accessibilityIdentifier("dynamicSpacer")
+                        .id("dynamicSpacer")
+                    }
+
+                    Color.clear.frame(height: 1)
+                      .id("bottomAnchor")
+                  }
+                  .padding()
+                  .frame(maxWidth: 960)
+                }
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+              }
+              .onChange(of: viewModel.thinking) { oldValue, newValue in
+                if newValue == true && oldValue == false {
+                  withAnimation {
+                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                  }
                 }
               }
-              .padding()
-              .frame(maxWidth: 960)
+              .onChange(of: viewModel.selectedThread) {
+                recentUserMessageId = nil
+                dynamicSpacerHeight = nil
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                  withAnimation {
+                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                  }
+                }
+              }
+              .onAppear {
+                scrollViewProxy = scrollProxy
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                  withAnimation {
+                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                  }
+                }
+              }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
-          .defaultScrollAnchor(.bottom)
+          .frame(maxHeight: .infinity)
 
           if let error = viewModel.errorMessage {
             Text(error)
@@ -57,7 +117,13 @@ struct ChatView: View {
             isTextFieldFocused: $isTextFieldFocused,
             thinking: viewModel.thinking,
             onSubmit: sendMessage,
-            onCancel: viewModel.cancelStreamingMessage,
+            onCancel: {
+              viewModel.cancelStreamingMessage()
+
+              withAnimation {
+                dynamicSpacerHeight = nil
+              }
+            },
             draftWithLastApp: viewModel.toggleDraftWithLastApp
           )
           .padding(.horizontal)
@@ -94,6 +160,16 @@ struct ChatView: View {
 
     Task {
       await viewModel.sendMessage(textToSend)
+
+      if let lastUserMessage = viewModel.selectedThread?.messages.last(where: { $0.role == .user }) {
+        recentUserMessageId = lastUserMessage.id.uuidString
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+          withAnimation {
+            scrollViewProxy?.scrollTo(lastUserMessage.id, anchor: .top)
+          }
+        }
+      }
     }
     userMessage = ""
   }
