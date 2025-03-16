@@ -37,12 +37,12 @@ class SwiftDataDraftPatchRepository: DraftPatchRepository {
     context.delete(thread)
   }
 
-  func fetchStoredModels() throws -> [StoredChatModel] {
-    let descriptor = FetchDescriptor<StoredChatModel>()
+  func fetchStoredModels() throws -> [ChatModel] {
+    let descriptor = FetchDescriptor<ChatModel>()
     return try context.fetch(descriptor)
   }
 
-  func insertStoredModel(_ model: StoredChatModel) throws {
+  func insertStoredModel(_ model: ChatModel) throws {
     context.insert(model)
     try context.save()
   }

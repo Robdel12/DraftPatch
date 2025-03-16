@@ -22,8 +22,14 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
   @Published var draftThread: ChatThread? = nil
-  @Published var availableModels: [ChatModel] = []
-  @Published var selectedModel: ChatModel = ChatModel(name: "Default", provider: .ollama)
+  @Published var availableModels: [ChatModel] = [] {
+    didSet {
+      if selectedModel == nil, !availableModels.isEmpty {
+        selectedModel = availableModels.first
+      }
+    }
+  }
+  @Published var selectedModel: ChatModel? = nil
   @Published var thinking: Bool = false
   @Published var showSettings: Bool = false
 
@@ -64,6 +70,7 @@ class DraftPatchViewModel: ObservableObject {
   func loadSettings() {
     do {
       settings = try repository.fetchSettings()
+      selectedModel = settings?.defaultModel ?? availableModels.first
 
       if settings != nil, let ollamaEndpontURL = settings?.ollamaConfig?.endpointURL {
         OllamaService.shared.endpointURL = ollamaEndpontURL
@@ -111,7 +118,7 @@ class DraftPatchViewModel: ObservableObject {
     do {
       for model in fetchedModels {
         if !self.availableModels.contains(where: { $0.name == model.name && $0.provider == model.provider }) {
-          let storedModel = StoredChatModel(name: model.name, provider: model.provider)
+          let storedModel = ChatModel(name: model.name, provider: model.provider)
           try repository.insertStoredModel(storedModel)
         }
       }
@@ -139,9 +146,10 @@ class DraftPatchViewModel: ObservableObject {
   /// Create a new ephemeral thread in memory, but do **not** persist it yet.
   func createDraftThread(title: String) {
     let defaultModel = settings?.defaultModel
+    guard let model = defaultModel ?? availableModels.first else { return }
     let thread = ChatThread(
       title: title,
-      model: defaultModel ?? ChatModel(name: "Default", provider: .ollama)
+      model: model
     )
     draftThread = thread
     selectedThread = draftThread
@@ -157,7 +165,9 @@ class DraftPatchViewModel: ObservableObject {
   /// we insert that draft into the context before persisting the message.
   func sendMessage(_ text: String? = nil) async {
     guard let thread = selectedThread else { return }
-    thread.model = selectedModel
+    guard let model = selectedModel ?? availableModels.first else { return }
+    model.lastUsed = Date()
+    thread.model = model
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in

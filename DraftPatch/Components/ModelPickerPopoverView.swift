@@ -23,10 +23,14 @@ struct ModelPickerPopoverView: View {
   @FocusState private var isSearchFieldFocused: Bool
 
   var filteredModels: [ChatModel] {
+    let sortedModels = viewModel.availableModels.sorted {
+      ($0.lastUsed ?? .distantPast) > ($1.lastUsed ?? .distantPast)
+    }
+
     if searchText.isEmpty {
-      return viewModel.availableModels
+      return sortedModels
     } else {
-      return viewModel.availableModels.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+      return sortedModels.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
     }
   }
 
@@ -40,13 +44,13 @@ struct ModelPickerPopoverView: View {
       isPopoverPresented.toggle()
     } label: {
       HStack {
-        Text(viewModel.selectedModel.name)
+        Text(viewModel.selectedModel?.name ?? "")
         Image(systemName: "chevron.down")
       }
       .padding(8)
       .contentShape(Rectangle())
     }
-    .accessibilityLabel(viewModel.selectedModel.name)
+    .accessibilityLabel(viewModel.selectedModel?.name ?? "")
     .accessibilityIdentifier("ModelSelectorButton")
     .keyboardShortcut("e", modifiers: .command)
     .buttonStyle(.plain)
@@ -117,7 +121,7 @@ struct ModelPickerPopoverView: View {
               ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
                 ModelPickerRow(
                   model: model,
-                  isSelected: model.id == viewModel.selectedModel.id,
+                  isSelected: model.id == viewModel.selectedModel?.id,
                   isHighlighted: selectedIndex == index
                 )
                 .id(index)
@@ -258,7 +262,7 @@ struct ModelPickerPopoverView: View {
       do {
         try await OllamaService.shared.deleteModel(modelName: modelName)
         viewModel.availableModels.removeAll { $0.name == modelName }
-        if let firstAvailable = viewModel.availableModels.first, viewModel.selectedModel.name == modelName {
+        if let firstAvailable = viewModel.availableModels.first, viewModel.selectedModel?.name == modelName {
           viewModel.selectedModel = firstAvailable
         }
         print("Model deleted successfully.")

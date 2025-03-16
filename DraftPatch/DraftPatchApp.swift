@@ -10,42 +10,11 @@ import SwiftUI
 
 @main
 struct DraftPatchApp: App {
-  private let modelContainer: ModelContainer
+  private var modelContainer: ModelContainer
   @StateObject private var viewModel: DraftPatchViewModel
 
   init() {
-    do {
-      let schema = Schema([
-        ChatThread.self,
-        ChatMessage.self,
-        Settings.self,
-      ])
-
-      if ProcessInfo.processInfo.arguments.contains("UI_TEST_MODE") {
-        let testConfiguration = ModelConfiguration(
-          schema: schema,
-          isStoredInMemoryOnly: true
-        )
-
-        self.modelContainer = try ModelContainer(
-          for: ChatThread.self, ChatMessage.self, Settings.self,
-          configurations: testConfiguration
-        )
-      } else {
-        let configuration = ModelConfiguration(
-          schema: schema,
-          isStoredInMemoryOnly: false
-        )
-
-        self.modelContainer = try ModelContainer(
-          for: ChatThread.self, ChatMessage.self, Settings.self,
-          configurations: configuration
-        )
-      }
-    } catch {
-      fatalError("Error creating ModelContainer: \(error)")
-    }
-
+    self.modelContainer = Self.setupModelContainer(retryOnFailure: true)
     let ctx = ModelContext(self.modelContainer)
     let repository = SwiftDataDraftPatchRepository(context: ctx)
 
@@ -62,6 +31,44 @@ struct DraftPatchApp: App {
 
     // Request accessibility permissions for drafting
     DraftingService.shared.checkAccessibilityPermission()
+  }
+
+  private static func setupModelContainer(retryOnFailure: Bool) -> ModelContainer {
+    do {
+      let schema = Schema([
+        ChatThread.self,
+        ChatMessage.self,
+        Settings.self,
+      ])
+
+      let configuration = ModelConfiguration(
+        schema: schema,
+        isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("UI_TEST_MODE")
+      )
+
+      return try ModelContainer(
+        for: ChatThread.self, ChatMessage.self, Settings.self,
+        configurations: configuration
+      )
+    } catch {
+      print("Error creating ModelContainer: \(error)")
+      if retryOnFailure {
+        print("Deleting store and retrying...")
+        let storeURL = URL(fileURLWithPath: "\(NSHomeDirectory())/Library/Application Support/default.store")
+        let fileManager = FileManager.default
+        if fileManager.fileExists(atPath: storeURL.path) {
+          do {
+            try fileManager.removeItem(at: storeURL)
+            print("Deleted existing store at: \(storeURL)")
+          } catch {
+            print("Failed to delete store: \(error)")
+          }
+        }
+        return setupModelContainer(retryOnFailure: false)
+      } else {
+        fatalError("Failed to initialize model container after retrying.")
+      }
+    }
   }
 
   var body: some Scene {

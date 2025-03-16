@@ -8,7 +8,7 @@
 import Foundation
 
 class MockLLMManager: LLMManager {
-  override func getService(for provider: ChatModel.LLMProvider) -> LLMService {
+  override func getService(for provider: LLMProvider) -> LLMService {
     return MockLLMService.shared
   }
 

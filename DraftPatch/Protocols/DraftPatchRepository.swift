@@ -11,6 +11,6 @@ protocol DraftPatchRepository {
   func fetchSettings() throws -> Settings?
   func insertThread(_ thread: ChatThread) throws
   func deleteThread(_ thread: ChatThread) throws
-  func fetchStoredModels() throws -> [StoredChatModel]
-  func insertStoredModel(_ model: StoredChatModel) throws
+  func fetchStoredModels() throws -> [ChatModel]
+  func insertStoredModel(_ model: ChatModel) throws
 }

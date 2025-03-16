@@ -6,18 +6,27 @@
 //
 
 import Foundation
+import SwiftData
 
-struct ChatModel: Identifiable, Codable, Hashable, Equatable {
-  let name: String
-  let provider: LLMProvider
+enum LLMProvider: String, Codable {
+  case ollama
+  case openai
+  case gemini
+  case anthropic
+}
+
+@Model
+class ChatModel: Identifiable, Equatable {
+  var name: String
+  var provider: LLMProvider
+  var lastUsed: Date? = nil
 
   var id: String { name }
 
-  enum LLMProvider: String, Codable {
-    case ollama
-    case openai
-    case gemini
-    case anthropic
+  init(name: String, provider: LLMProvider, lastUsed: Date? = nil) {
+    self.name = name
+    self.provider = provider
+    self.lastUsed = Date()
   }
 
   static func == (lhs: ChatModel, rhs: ChatModel) -> Bool {

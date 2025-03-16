@@ -8,7 +8,7 @@
 class LLMManager {
   static let shared = LLMManager()
 
-  func getService(for provider: ChatModel.LLMProvider) -> LLMService {
+  func getService(for provider: LLMProvider) -> LLMService {
     switch provider {
     case .ollama:
       return OllamaService.shared
@@ -24,7 +24,7 @@ class LLMManager {
   func loadLLMs(_ settings: Settings?) async -> [ChatModel] {
     var availableModels: [ChatModel] = []
 
-    let providers: [(enabled: Bool, service: LLMService, provider: ChatModel.LLMProvider)] = [
+    let providers: [(enabled: Bool, service: LLMService, provider: LLMProvider)] = [
       (settings?.ollamaConfig?.enabled ?? false, OllamaService.shared, .ollama),
       (settings?.openAIConfig?.enabled ?? false, OpenAIService.shared, .openai),
       (settings?.geminiConfig?.enabled ?? false, GeminiService.shared, .gemini),
