@@ -160,7 +160,7 @@ final class DraftPatchUITests: XCTestCase {
 
     let defaultSelectedModel = app.buttons["ModelSelectorButton"].firstMatch
     XCTAssertTrue(defaultSelectedModel.waitForExistence(timeout: 2), "Can't find the default model")
-    XCTAssertEqual(defaultSelectedModel.label, "Default", "The selected model does not equal the default")
+    XCTAssertEqual(defaultSelectedModel.label, "MockModel1", "The selected model does not equal the first in list")
 
     app.typeKey("e", modifierFlags: .command)
 

@@ -83,14 +83,21 @@ final class DraftPatchViewModelTests {
 
   @Test
   func testCreateDraftThread() {
-    let mockRepository = MockChatThreadRepository()
-    let viewModel = DraftPatchViewModel(repository: mockRepository)
+    let repository = MockChatThreadRepository()
+    let viewModel = DraftPatchViewModel(repository: repository)
+
+    viewModel.availableModels = []
+    viewModel.createDraftThread(title: "New Draft")
+    #expect(viewModel.draftThread == nil)
+
+    let mockModel = ChatModel(name: "GPT-4", provider: .openai)
+    viewModel.availableModels = [mockModel]
 
     viewModel.createDraftThread(title: "New Draft")
 
     #expect(viewModel.draftThread != nil)
     #expect(viewModel.draftThread?.title == "New Draft")
-    #expect(viewModel.selectedThread == viewModel.draftThread)
+    #expect(viewModel.draftThread?.model == mockModel)
   }
 
   @Test
