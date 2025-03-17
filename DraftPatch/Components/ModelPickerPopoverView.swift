@@ -24,7 +24,11 @@ struct ModelPickerPopoverView: View {
 
   var filteredModels: [ChatModel] {
     let sortedModels = viewModel.availableModels.sorted {
-      ($0.lastUsed ?? .distantPast) > ($1.lastUsed ?? .distantPast)
+      guard let date1 = $0.lastUsed, let date2 = $1.lastUsed else {
+        return $0.lastUsed != nil
+      }
+
+      return date1 > date2
     }
 
     if searchText.isEmpty {

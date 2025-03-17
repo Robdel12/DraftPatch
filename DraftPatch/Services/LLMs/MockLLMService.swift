@@ -12,7 +12,7 @@ class MockLLMManager: LLMManager {
     return MockLLMService.shared
   }
 
-  override func loadLLMs(_ settings: Settings?) async -> [ChatModel] {
+  override func loadLLMs(_ settings: Settings?, existingModels: [ChatModel] = []) async -> [ChatModel] {
     return try! await MockLLMService.shared.fetchAvailableModels().map {
       ChatModel(name: $0, provider: .ollama)
     }

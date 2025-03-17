@@ -10,7 +10,7 @@ import SwiftUI
 
 struct ChatBoxEditor: View {
   @Binding var userMessage: String
-  @FocusState.Binding var isTextFieldFocused: Bool
+  @Binding var isTextFieldFocused: Bool
   @State private var textEditorHeight: CGFloat = 15
 
   let thinking: Bool

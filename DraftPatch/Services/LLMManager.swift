@@ -21,7 +21,7 @@ class LLMManager {
     }
   }
 
-  func loadLLMs(_ settings: Settings?) async -> [ChatModel] {
+  func loadLLMs(_ settings: Settings?, existingModels: [ChatModel]) async -> [ChatModel] {
     var availableModels: [ChatModel] = []
 
     let providers: [(enabled: Bool, service: LLMService, provider: LLMProvider)] = [
@@ -35,8 +35,17 @@ class LLMManager {
       for provider in providers where provider.enabled {
         group.addTask {
           do {
-            let models = try await provider.service.fetchAvailableModels()
-            return models.map { ChatModel(name: $0, provider: provider.provider) }
+            let fetchedModelNames = try await provider.service.fetchAvailableModels()
+
+            return fetchedModelNames.compactMap { modelName in
+              if let existingModel = existingModels.first(where: {
+                $0.name == modelName && $0.provider == provider.provider
+              }) {
+                return existingModel
+              } else {
+                return ChatModel(name: modelName, provider: provider.provider)
+              }
+            }
           } catch {
             print("Error loading \(provider.provider) models: \(error)")
             return []

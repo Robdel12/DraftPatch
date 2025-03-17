@@ -10,7 +10,6 @@ import SwiftUI
 
 struct RootView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
-  @FocusState var isTextFieldFocused: Bool
 
   var body: some View {
     NavigationSplitView {
@@ -64,7 +63,7 @@ struct RootView: View {
       .background(viewModel.showSettings ? Color.accentColor.opacity(0.2) : Color.clear)
     } detail: {
       NavigationStack {
-        ChatView(isTextFieldFocused: $isTextFieldFocused)
+        ChatView()
           .environmentObject(viewModel)
           .navigationDestination(isPresented: $viewModel.showSettings) {
             SettingsView()
@@ -98,7 +97,7 @@ struct RootView: View {
         ToolbarItem(placement: .primaryAction) {
           Button {
             viewModel.createDraftThread(title: "New Conversation")
-            isTextFieldFocused = true
+            viewModel.chatBoxFocused = true
           } label: {
             Label("New Chat", systemImage: "highlighter")
           }

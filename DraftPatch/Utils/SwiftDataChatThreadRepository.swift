@@ -25,6 +25,16 @@ class SwiftDataDraftPatchRepository: DraftPatchRepository {
     return try context.fetch(descriptor).first
   }
 
+  func fetchModels() throws -> [ChatModel]? {
+    let descriptor = FetchDescriptor<ChatModel>(sortBy: [SortDescriptor(\.lastUsed, order: .reverse)])
+    return try context.fetch(descriptor)
+  }
+
+  func insertModel(_ model: ChatModel) throws {
+    context.insert(model)
+    try context.save()
+  }
+
   func insertThread(_ thread: ChatThread) throws {
     context.insert(thread)
   }
@@ -35,15 +45,5 @@ class SwiftDataDraftPatchRepository: DraftPatchRepository {
 
   func deleteThread(_ thread: ChatThread) throws {
     context.delete(thread)
-  }
-
-  func fetchStoredModels() throws -> [ChatModel] {
-    let descriptor = FetchDescriptor<ChatModel>()
-    return try context.fetch(descriptor)
-  }
-
-  func insertStoredModel(_ model: ChatModel) throws {
-    context.insert(model)
-    try context.save()
   }
 }

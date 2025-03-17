@@ -10,7 +10,6 @@ import SwiftUI
 struct ChatView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
   @State private var userMessage = ""
-  @FocusState.Binding var isTextFieldFocused: Bool
 
   @State private var recentUserMessageId: String? = nil
   @State private var dynamicSpacerHeight: CGFloat? = nil
@@ -111,10 +110,27 @@ struct ChatView: View {
               }
           }
 
+          Button {
+            viewModel.selectNextThread()
+          } label: {
+            Text("Next thread")
+          }
+          .opacity(0)
+          .keyboardShortcut(KeyEquivalent.upArrow, modifiers: .command)
+
+          Button {
+            viewModel.selectPreviousThread()
+            print("viewModel.chatBoxFocused: \(viewModel.chatBoxFocused)")
+          } label: {
+            Text("Previous thread")
+          }
+          .opacity(0)
+          .keyboardShortcut(KeyEquivalent.downArrow, modifiers: .command)
+
           ChatBoxView(
             userMessage: $userMessage,
             selectedDraftApp: $viewModel.selectedDraftApp,
-            isTextFieldFocused: $isTextFieldFocused,
+            isTextFieldFocused: $viewModel.chatBoxFocused,
             thinking: viewModel.thinking,
             onSubmit: sendMessage,
             onCancel: {
@@ -129,6 +145,7 @@ struct ChatView: View {
           .padding(.horizontal)
           .frame(maxWidth: 960)
         }
+        .id(thread.id)
       }
       .padding(.bottom, 12)
       .background(Color(.black).opacity(0.2))

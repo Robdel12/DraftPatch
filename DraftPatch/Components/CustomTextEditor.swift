@@ -10,7 +10,7 @@ import SwiftUI
 
 struct CustomTextEditor: NSViewRepresentable {
   @Binding var text: String
-  @FocusState.Binding var isFocused: Bool
+  @Binding var isFocused: Bool
 
   var isEditable: Bool = true
   var thinking: Bool = false

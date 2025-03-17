@@ -16,20 +16,22 @@ enum LLMProvider: String, Codable {
 }
 
 @Model
-class ChatModel: Identifiable, Equatable {
+final class ChatModel: Identifiable, Equatable {
   var name: String
   var provider: LLMProvider
-  var lastUsed: Date? = nil
+  var lastUsed: Date?
 
   var id: String { name }
 
   init(name: String, provider: LLMProvider, lastUsed: Date? = nil) {
     self.name = name
     self.provider = provider
-    self.lastUsed = Date()
+    self.lastUsed = lastUsed
   }
 
   static func == (lhs: ChatModel, rhs: ChatModel) -> Bool {
-    return lhs.name == rhs.name && lhs.provider == rhs.provider
+    return lhs.name == rhs.name
+    && lhs.provider == rhs.provider
+    && lhs.lastUsed == rhs.lastUsed
   }
 }

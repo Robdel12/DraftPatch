@@ -18,6 +18,14 @@ class MockChatThreadRepository: DraftPatchRepository {
     return mockSettings
   }
 
+  func fetchModels() throws -> [ChatModel]? {
+    return mockStoredModels
+  }
+
+  func insertModel(_ model: ChatModel) throws {
+    mockStoredModels.append(model)
+  }
+
   func insertThread(_ thread: ChatThread) throws {
     mockThreads.append(thread)
   }
@@ -26,10 +34,6 @@ class MockChatThreadRepository: DraftPatchRepository {
 
   func deleteThread(_ thread: ChatThread) throws {
     mockThreads.removeAll { $0.id == thread.id }
-  }
-
-  func fetchStoredModels() throws -> [ChatModel] {
-    return mockStoredModels
   }
 
   func insertStoredModel(_ model: ChatModel) throws {

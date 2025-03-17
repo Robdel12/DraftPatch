@@ -10,7 +10,7 @@ import SwiftUI
 struct ChatBoxView: View {
   @Binding var userMessage: String
   @Binding var selectedDraftApp: DraftApp?
-  @FocusState.Binding var isTextFieldFocused: Bool
+  @Binding var isTextFieldFocused: Bool
 
   let thinking: Bool
   let onSubmit: () -> Void

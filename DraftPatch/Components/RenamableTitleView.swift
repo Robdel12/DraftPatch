@@ -11,7 +11,7 @@ struct RenamableTitleView: View {
   @ObservedObject var thread: ChatThread
   @State private var isRenaming = false
   @State private var localTitle: String
-  @FocusState private var isTextFieldFocused: Bool
+  @FocusState private var focused: Bool
 
   init(thread: ChatThread) {
     self.thread = thread
@@ -31,11 +31,11 @@ struct RenamableTitleView: View {
         .accessibilityIdentifier("renameThreadTextField")
         .textFieldStyle(.roundedBorder)
         .frame(maxWidth: 200)
-        .focused($isTextFieldFocused)
+        .focused($focused)
         .onKeyPress { key in
           if key.characters == "\u{1B}" {
             localTitle = thread.title
-            isTextFieldFocused = false
+            focused = false
             isRenaming = false
             return .handled
           }
@@ -43,7 +43,7 @@ struct RenamableTitleView: View {
         }
         .task {
           DispatchQueue.main.async {
-            isTextFieldFocused = true
+            focused = true
           }
         }
       } else {

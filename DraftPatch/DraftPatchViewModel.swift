@@ -32,6 +32,7 @@ class DraftPatchViewModel: ObservableObject {
   @Published var selectedModel: ChatModel? = nil
   @Published var thinking: Bool = false
   @Published var showSettings: Bool = false
+  @Published var chatBoxFocused: Bool = true
 
   @Published var isDraftingEnabled: Bool = false
   @Published var selectedDraftApp: DraftApp? = nil {
@@ -48,6 +49,7 @@ class DraftPatchViewModel: ObservableObject {
     self.repository = repository
     self.llmManager = llmManager
 
+    loadModels()
     loadSettings()
     loadThreads()
 
@@ -80,6 +82,14 @@ class DraftPatchViewModel: ObservableObject {
     }
   }
 
+  func loadModels() {
+    do {
+      availableModels = try repository.fetchModels() ?? []
+    } catch {
+      print("Error loading settings: \(error)")
+    }
+  }
+
   func deleteThread(_ thread: ChatThread) {
     do {
       try repository.deleteThread(thread)
@@ -106,27 +116,7 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
-    do {
-      let storedModels = try repository.fetchStoredModels()
-      self.availableModels = storedModels.map { ChatModel(name: $0.name, provider: $0.provider) }
-    } catch {
-      print("Error loading stored models: \(error)")
-    }
-
-    let fetchedModels = await llmManager.loadLLMs(settings)
-
-    do {
-      for model in fetchedModels {
-        if !self.availableModels.contains(where: { $0.name == model.name && $0.provider == model.provider }) {
-          let storedModel = ChatModel(name: model.name, provider: model.provider)
-          try repository.insertStoredModel(storedModel)
-        }
-      }
-    } catch {
-      print("Error saving fetched models: \(error)")
-    }
-
-    self.availableModels = fetchedModels
+    self.availableModels = await llmManager.loadLLMs(settings, existingModels: availableModels)
   }
 
   func toggleDraftWithLastApp() {
@@ -165,9 +155,12 @@ class DraftPatchViewModel: ObservableObject {
   /// we insert that draft into the context before persisting the message.
   func sendMessage(_ text: String? = nil) async {
     guard let thread = selectedThread else { return }
-    guard let model = selectedModel ?? availableModels.first else { return }
-    model.lastUsed = Date()
-    thread.model = model
+    guard let currentModel = selectedModel ?? availableModels.first else { return }
+
+    if let model = availableModels.first(where: { $0.id == currentModel.id }) {
+      model.lastUsed = Date()
+      thread.model = model
+    }
 
     // Fetch selected text if a DraftApp is selected
     let selectedText = selectedDraftApp.flatMap { draftApp in
@@ -308,5 +301,29 @@ class DraftPatchViewModel: ObservableObject {
   private func generateTitle(for text: String, using model: ChatModel) async throws -> String {
     return try await llmManager.getService(for: model.provider)
       .generateTitle(for: text, modelName: model.name)
+  }
+
+  func selectPreviousThread() {
+    guard !chatThreads.isEmpty else { return }
+
+    if let currentThread = selectedThread,
+      let index = chatThreads.firstIndex(where: { $0.id == currentThread.id })
+    {
+      selectedThread = index > 0 ? chatThreads[index - 1] : chatThreads.last
+    } else {
+      selectedThread = chatThreads.last
+    }
+  }
+
+  func selectNextThread() {
+    guard !chatThreads.isEmpty else { return }
+
+    if let currentThread = selectedThread,
+      let index = chatThreads.firstIndex(where: { $0.id == currentThread.id })
+    {
+      selectedThread = index < chatThreads.count - 1 ? chatThreads[index + 1] : chatThreads.first
+    } else {
+      selectedThread = chatThreads.first
+    }
   }
 }
