@@ -66,8 +66,14 @@ struct CustomTextEditor: NSViewRepresentable {
         textView.string = text
       }
 
-      if isFocused {
-        nsView.window?.makeFirstResponder(textView)
+      if isFocused && nsView.window?.firstResponder != textView {
+        DispatchQueue.main.async {
+          nsView.window?.makeFirstResponder(textView)
+        }
+      } else if !isFocused && nsView.window?.firstResponder == textView {
+        DispatchQueue.main.async {
+          nsView.window?.makeFirstResponder(nil)
+        }
       }
     }
   }

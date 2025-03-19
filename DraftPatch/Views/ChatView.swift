@@ -120,7 +120,6 @@ struct ChatView: View {
 
           Button {
             viewModel.selectPreviousThread()
-            print("viewModel.chatBoxFocused: \(viewModel.chatBoxFocused)")
           } label: {
             Text("Previous thread")
           }
