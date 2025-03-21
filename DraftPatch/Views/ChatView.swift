@@ -10,10 +10,9 @@ import SwiftUI
 struct ChatView: View {
   @EnvironmentObject var viewModel: DraftPatchViewModel
   @State private var userMessage = ""
-
-  @State private var recentUserMessageId: String? = nil
-  @State private var dynamicSpacerHeight: CGFloat? = nil
   @State private var scrollViewProxy: ScrollViewProxy?
+  @State private var currentViewportHeight: CGFloat = 0
+  @State private var sentMessage: Bool = false
 
   var body: some View {
     if let thread = viewModel.selectedThread {
@@ -27,6 +26,13 @@ struct ChatView: View {
           }
 
           GeometryReader { geometry in
+            Color.clear
+              .onAppear {
+                currentViewportHeight = geometry.size.height
+              }
+              .onChange(of: geometry.size.height) { _, newHeight in
+                currentViewportHeight = newHeight
+              }
             ScrollViewReader { scrollProxy in
               ScrollView {
                 VStack(spacing: 0) {
@@ -36,62 +42,45 @@ struct ChatView: View {
                         .id(msg.id)
                         .environmentObject(viewModel)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                          GeometryReader { msgGeometry in
-                            Color.clear
-                              .onAppear {
-                                if msg.role == .user, msg.id.uuidString == recentUserMessageId {
-                                  DispatchQueue.main.async {
-                                    let messageHeight = msgGeometry.size.height
-                                    let availableHeight = geometry.size.height
-                                    let calculatedSpacerHeight = max(availableHeight - messageHeight - 100, 0)
-
-                                    withAnimation {
-                                      dynamicSpacerHeight = calculatedSpacerHeight
-                                    }
-                                  }
-                                }
-                              }
-                          }
-                        )
                     }
 
-                    if let height = dynamicSpacerHeight {
-                      Spacer(minLength: height)
-                        .accessibilityIdentifier("dynamicSpacer")
-                        .id("dynamicSpacer")
+                    if sentMessage {
+                      Spacer(minLength: currentViewportHeight - 200)
+                        .id("bottomSpacer")
                     }
 
                     Color.clear.frame(height: 1)
                       .id("bottomAnchor")
+
                   }
                   .padding()
                   .frame(maxWidth: 960)
                 }
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
               }
-              .onChange(of: viewModel.thinking) { oldValue, newValue in
-                if newValue == true && oldValue == false {
-                  withAnimation {
-                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
-                  }
-                }
-              }
-              .onChange(of: viewModel.selectedThread) {
-                recentUserMessageId = nil
-                dynamicSpacerHeight = nil
+              .onChange(of: viewModel.selectedThread?.messages) {
+                if let thread = viewModel.selectedThread {
+                  let sortedMessages = thread.messages.sorted(by: { $0.timestamp < $1.timestamp })
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                  withAnimation {
-                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                  if let lastUserMessage = sortedMessages.last(where: { $0.role == .user }) {
+                    DispatchQueue.main.async {
+                      withAnimation {
+                        scrollViewProxy?.scrollTo(lastUserMessage.id, anchor: .top)
+                      }
+                    }
                   }
                 }
               }
               .onAppear {
                 scrollViewProxy = scrollProxy
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+
+                DispatchQueue.main.async {
                   withAnimation {
-                    scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                    if thread.messages.count > 0 {
+                      scrollProxy.scrollTo("bottomSpacer", anchor: .bottom)
+                    } else {
+                      scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                    }
                   }
                 }
               }
@@ -116,7 +105,7 @@ struct ChatView: View {
             Text("Next thread")
           }
           .opacity(0)
-          .keyboardShortcut(KeyEquivalent.upArrow, modifiers: .command)
+          .keyboardShortcut(KeyEquivalent.downArrow, modifiers: .command)
 
           Button {
             viewModel.selectPreviousThread()
@@ -124,7 +113,7 @@ struct ChatView: View {
             Text("Previous thread")
           }
           .opacity(0)
-          .keyboardShortcut(KeyEquivalent.downArrow, modifiers: .command)
+          .keyboardShortcut(KeyEquivalent.upArrow, modifiers: .command)
 
           ChatBoxView(
             userMessage: $userMessage,
@@ -134,10 +123,6 @@ struct ChatView: View {
             onSubmit: sendMessage,
             onCancel: {
               viewModel.cancelStreamingMessage()
-
-              withAnimation {
-                dynamicSpacerHeight = nil
-              }
             },
             draftWithLastApp: viewModel.toggleDraftWithLastApp
           )
@@ -176,17 +161,9 @@ struct ChatView: View {
 
     Task {
       await viewModel.sendMessage(textToSend)
-
-      if let lastUserMessage = viewModel.selectedThread?.messages.last(where: { $0.role == .user }) {
-        recentUserMessageId = lastUserMessage.id.uuidString
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-          withAnimation {
-            scrollViewProxy?.scrollTo(lastUserMessage.id, anchor: .top)
-          }
-        }
-      }
     }
+
     userMessage = ""
+    sentMessage = true
   }
 }
