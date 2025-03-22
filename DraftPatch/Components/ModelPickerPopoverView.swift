@@ -115,96 +115,104 @@ struct ModelPickerPopoverView: View {
 
         Divider()
 
-        ScrollView {
-          LazyVStack(alignment: .leading, spacing: 4) {
-            if filteredModels.isEmpty && !canDownloadNewModel {
-              Text("No matching models found")
-                .foregroundColor(.secondary)
-                .padding(.vertical, 8)
-            } else {
-              ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
-                ModelPickerRow(
-                  model: model,
-                  isSelected: model.id == viewModel.selectedModel?.id,
-                  isHighlighted: selectedIndex == index
-                )
-                .id(index)
-                .onTapGesture {
-                  selectModel(at: index)
-                }
-                .contextMenu {
-                  if model.provider == .ollama {
-                    Button(role: .destructive) {
-                      deleteModel(modelName: model.name)
-                    } label: {
-                      Text("Delete")
+        ScrollViewReader { proxy in
+          ScrollView {
+            LazyVStack(alignment: .leading, spacing: 4) {
+              if filteredModels.isEmpty && !canDownloadNewModel {
+                Text("No matching models found")
+                  .foregroundColor(.secondary)
+                  .padding(.vertical, 8)
+              } else {
+                ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
+                  ModelPickerRow(
+                    model: model,
+                    isSelected: model.id == viewModel.selectedModel?.id,
+                    isHighlighted: selectedIndex == index
+                  )
+                  .id(index)
+                  .onTapGesture {
+                    selectModel(at: index)
+                  }
+                  .contextMenu {
+                    if model.provider == .ollama {
+                      Button(role: .destructive) {
+                        deleteModel(modelName: model.name)
+                      } label: {
+                        Text("Delete")
+                      }
                     }
                   }
                 }
-              }
 
-              if canDownloadNewModel {
-                if !filteredModels.isEmpty {
-                  Divider()
-                    .padding(.vertical, 4)
-                }
+                if canDownloadNewModel {
+                  if !filteredModels.isEmpty {
+                    Divider()
+                      .padding(.vertical, 4)
+                  }
 
-                if isPullingModel {
-                  VStack(alignment: .leading, spacing: 8) {
-                    Text(statusMessage)
-                      .foregroundColor(.secondary)
+                  if isPullingModel {
+                    VStack(alignment: .leading, spacing: 8) {
+                      Text(statusMessage)
+                        .foregroundColor(.secondary)
 
-                    ProgressView(value: downloadProgress)
-                      .progressViewStyle(LinearProgressViewStyle())
-                  }
-                  .padding(.vertical, 8)
-                } else if downloadCompleted {
-                  HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                      .foregroundColor(.green)
-                    Text("Download complete!")
-                      .foregroundColor(.green)
-                  }
-                  .padding(.vertical, 8)
-                } else if downloadFailed {
-                  VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                      Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                      Text("Download failed")
-                        .foregroundColor(.red)
-                    }
-                    Text(errorMessage)
-                      .font(.caption)
-                      .foregroundColor(.red)
-                      .lineLimit(2)
-                  }
-                  .padding(.vertical, 8)
-                } else {
-                  Button(action: {
-                    pullModel(modelName: searchText)
-                  }) {
-                    HStack {
-                      Image(systemName: "arrow.down.circle")
-                        .foregroundColor(.accentColor)
-                      Text("Download \(searchText)")
-                        .foregroundColor(.accentColor)
-                      Spacer()
+                      ProgressView(value: downloadProgress)
+                        .progressViewStyle(LinearProgressViewStyle())
                     }
                     .padding(.vertical, 8)
+                  } else if downloadCompleted {
+                    HStack {
+                      Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                      Text("Download complete!")
+                        .foregroundColor(.green)
+                    }
+                    .padding(.vertical, 8)
+                  } else if downloadFailed {
+                    VStack(alignment: .leading, spacing: 4) {
+                      HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                          .foregroundColor(.red)
+                        Text("Download failed")
+                          .foregroundColor(.red)
+                      }
+                      Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .lineLimit(2)
+                    }
+                    .padding(.vertical, 8)
+                  } else {
+                    Button(action: {
+                      pullModel(modelName: searchText)
+                    }) {
+                      HStack {
+                        Image(systemName: "arrow.down.circle")
+                          .foregroundColor(.accentColor)
+                        Text("Download \(searchText)")
+                          .foregroundColor(.accentColor)
+                        Spacer()
+                      }
+                      .padding(.vertical, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .background(
+                      selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
+                    )
+                    .cornerRadius(4)
+                    .id(filteredModels.count)
                   }
-                  .buttonStyle(PlainButtonStyle())
-                  .background(
-                    selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
-                  )
-                  .cornerRadius(4)
-                  .id(filteredModels.count)
                 }
               }
             }
+
+          }
+          .frame(height: min(350, CGFloat(filteredModels.count * 40 + (canDownloadNewModel ? 60 : 0))))
+          .onChange(of: selectedIndex) { _, newIndex in
+            withAnimation {
+              proxy.scrollTo(newIndex, anchor: .bottom)
+            }
           }
         }
-        .frame(height: min(350, CGFloat(filteredModels.count * 40 + (canDownloadNewModel ? 60 : 0))))
       }
       .padding()
       .frame(width: 300)

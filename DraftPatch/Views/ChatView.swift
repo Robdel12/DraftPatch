@@ -58,6 +58,7 @@ struct ChatView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
               }
+              .defaultScrollAnchor(.bottom)
               .onChange(of: viewModel.selectedThread?.messages) {
                 if let thread = viewModel.selectedThread {
                   let sortedMessages = thread.messages.sorted(by: { $0.timestamp < $1.timestamp })
