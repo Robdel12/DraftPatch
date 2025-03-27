@@ -9,6 +9,7 @@ enum DraftApp: String, CaseIterable, Codable, Identifiable, Hashable {
   case xcode = "Xcode"
   case emacs = "Emacs"
   case iterm = "iTerm"
+  case notes = "Notes"
 
   var id: String {
     switch self {
@@ -18,6 +19,8 @@ enum DraftApp: String, CaseIterable, Codable, Identifiable, Hashable {
       return "org.gnu.Emacs"
     case .iterm:
       return "com.googlecode.iterm2"
+    case .notes:
+      return "com.apple.Notes"
     }
   }
 

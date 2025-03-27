@@ -68,7 +68,7 @@ final class DraftPatchUITests: XCTestCase {
 
     app.typeKey("d", modifierFlags: .command)
 
-    let draftingTextElement = app.staticTexts["Drafting with Xcode • Unknown"]
+    let draftingTextElement = app.staticTexts["Drafting with Xcode"]
     XCTAssertTrue(draftingTextElement.waitForExistence(timeout: 2), "The 'Drafting with' text did not appear")
 
     app.typeKey("d", modifierFlags: .command)
@@ -262,10 +262,10 @@ final class DraftPatchUITests: XCTestCase {
 
     xcodeOption.tap()
 
-    let draftingText = app.staticTexts["Drafting with Xcode • Unknown"]
+    let draftingText = app.staticTexts["Drafting with Xcode"]
     XCTAssertTrue(
       draftingText.waitForExistence(timeout: 2),
-      "The drafting text did not update to 'Drafting with Xcode • Unknown'")
+      "The drafting text did not update to 'Drafting with Xcode'")
   }
 
   @MainActor

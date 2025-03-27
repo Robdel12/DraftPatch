@@ -25,7 +25,7 @@ struct ChatBoxView: View {
 
   var draftingText: String {
     guard let app = selectedDraftApp else { return "" }
-    let filePart = fileName ?? "Unknown"
+    let filePart = fileName ?? ""
 
     let linePart: String
     if let lineNumbers = lineNumbers {
@@ -37,7 +37,16 @@ struct ChatBoxView: View {
       linePart = ""
     }
 
-    return "Drafting with \(app.name) • \(filePart)\(linePart)"
+    var parts = [String]()
+    if !filePart.isEmpty {
+      parts.append(filePart)
+    }
+    if !linePart.isEmpty {
+      parts.append(linePart)
+    }
+
+    let formattedParts = parts.joined()
+    return "Drafting with \(app.name)\(formattedParts.isEmpty ? "" : " • \(formattedParts)")"
   }
 
   var body: some View {
