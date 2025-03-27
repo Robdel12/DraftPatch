@@ -90,12 +90,15 @@ final class DraftPatchUITests: XCTestCase {
     let messageField = app.textViews["Chatbox"]
     XCTAssertTrue(messageField.waitForExistence(timeout: 2), "Chat input field is not visible")
 
-    let messageText = "Hello, how are you?"
+    let messageText1 = "Hello, how are you?"
+    let messageText2 = "Just checking in!"
+
+    // First message
     messageField.tap()
-    messageField.typeText(messageText)
+    messageField.typeText(messageText1)
     app.typeKey(.return, modifierFlags: [])
 
-    let sentMessage = app.staticTexts[messageText]
+    let sentMessage = app.staticTexts[messageText1]
     XCTAssertTrue(sentMessage.waitForExistence(timeout: 2), "Sent message is not visible")
 
     let fullMessage =
@@ -104,6 +107,11 @@ final class DraftPatchUITests: XCTestCase {
 
     XCTAssertTrue(replyMessage.waitForExistence(timeout: 5), "AI reply is not visible")
     XCTAssertTrue(replyMessage.frame.minY > sentMessage.frame.minY, "Reply should be below the sent message")
+
+    // Second message
+    messageField.tap()
+    messageField.typeText(messageText2)
+    app.typeKey(.return, modifierFlags: [])
 
     let dynamicSpacer = app.otherElements["dynamicSpacer"]
     XCTAssertTrue(dynamicSpacer.waitForExistence(timeout: 2), "Dynamic spacer should exist")
@@ -160,7 +168,8 @@ final class DraftPatchUITests: XCTestCase {
 
     let defaultSelectedModel = app.buttons["ModelSelectorButton"].firstMatch
     XCTAssertTrue(defaultSelectedModel.waitForExistence(timeout: 2), "Can't find the default model")
-    XCTAssertEqual(defaultSelectedModel.label, "MockModel1", "The selected model does not equal the first in list")
+    XCTAssertEqual(
+      defaultSelectedModel.label, "MockModel1", "The selected model does not equal the first in list")
 
     app.typeKey("e", modifierFlags: .command)
 

@@ -51,6 +51,7 @@ struct ChatView: View {
                     if sentMessage && (sortedMessages.filter { $0.role == .user }.count > 1) {
                       Spacer(minLength: currentViewportHeight - 150)
                         .id("bottomSpacer")
+                        .accessibilityIdentifier("dynamicSpacer")
                     }
 
                     Color.clear.frame(height: 1)
