@@ -53,6 +53,7 @@ final class GeminiService: LLMService {
       "gemini-2.0-pro",
       "gemini-2.0-flash",
       "gemini-2.0-flash-lite",
+      "gemini-2.5-pro-exp-03-25",
     ]
 
     return decoded.models.compactMap { modelInfo in
@@ -110,8 +111,10 @@ final class GeminiService: LLMService {
             !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
           }
 
+          // Gemini API wants `model` over `assistant` for the role.
           let contents = filteredMessages.map { msg in
-            Content(role: msg.role.rawValue, parts: [Part(text: msg.content)])
+            let role = msg.role.rawValue == "assistant" ? "model" : msg.role.rawValue
+            return Content(role: role, parts: [Part(text: msg.content)])
           }
 
           let requestBody = RequestBody(contents: contents)
@@ -167,7 +170,7 @@ final class GeminiService: LLMService {
       }
     }
   }
-  
+
   func cancelStreamChat() {
     isCancelled = true
   }
