@@ -12,7 +12,7 @@ struct DraftingPopover: View {
   @Binding var isShowingPopover: Bool
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: 12) {
       Text("Draft with")
         .font(.title3)
 
@@ -48,7 +48,6 @@ struct DraftingPopover: View {
           }
           .contentShape(Rectangle())
           .frame(maxWidth: .infinity, alignment: .leading)
-          .padding(.vertical, 8)
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)

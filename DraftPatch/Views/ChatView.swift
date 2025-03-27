@@ -14,6 +14,10 @@ struct ChatView: View {
   @State private var currentViewportHeight: CGFloat = 0
   @State private var sentMessage: Bool = false
 
+  private var sortedMessages: [ChatMessage] {
+    viewModel.selectedThread?.messages.sorted { $0.timestamp < $1.timestamp } ?? []
+  }
+
   var body: some View {
     if let thread = viewModel.selectedThread {
       VStack {
@@ -37,15 +41,15 @@ struct ChatView: View {
               ScrollView {
                 VStack(spacing: 0) {
                   VStack(spacing: 8) {
-                    ForEach(thread.messages.sorted(by: { $0.timestamp < $1.timestamp }), id: \.id) { msg in
+                    ForEach(sortedMessages, id: \.id) { msg in
                       ChatMessageRow(message: msg)
                         .id(msg.id)
                         .environmentObject(viewModel)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
-                    if sentMessage {
-                      Spacer(minLength: currentViewportHeight - 200)
+                    if sentMessage && (sortedMessages.filter { $0.role == .user }.count > 1) {
+                      Spacer(minLength: currentViewportHeight - 150)
                         .id("bottomSpacer")
                     }
 
@@ -56,31 +60,28 @@ struct ChatView: View {
                   .padding()
                   .frame(maxWidth: 960)
                 }
-                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
               }
               .defaultScrollAnchor(.bottom)
-              .onChange(of: viewModel.selectedThread?.messages) {
-                if let thread = viewModel.selectedThread {
-                  let sortedMessages = thread.messages.sorted(by: { $0.timestamp < $1.timestamp })
-
-                  if let lastUserMessage = sortedMessages.last(where: { $0.role == .user }) {
-                    DispatchQueue.main.async {
-                      withAnimation {
-                        scrollViewProxy?.scrollTo(lastUserMessage.id, anchor: .top)
-                      }
-                    }
-                  }
-                }
-              }
               .onAppear {
                 scrollViewProxy = scrollProxy
+                sentMessage = false
 
                 DispatchQueue.main.async {
-                  withAnimation {
-                    if thread.messages.count > 0 {
-                      scrollProxy.scrollTo("bottomSpacer", anchor: .bottom)
-                    } else {
-                      scrollProxy.scrollTo("bottomAnchor", anchor: .bottom)
+                  scrollProxy.scrollTo(sentMessage ? "bottomSpacer" : "bottomAnchor", anchor: .bottom)
+                }
+              }
+              .onChange(of: viewModel.selectedThread?.messages) { _, newMessages in
+                guard let messages = newMessages, !messages.isEmpty else { return }
+
+                // Find the latest message overall
+                let latestMessage = messages.max(by: { $0.timestamp < $1.timestamp })
+
+                // Only scroll-to-top if the latest message is from the user
+                if latestMessage?.role == .user {
+                  DispatchQueue.main.async {
+                    withAnimation(.smooth) {
+                      scrollViewProxy?.scrollTo(latestMessage!.id, anchor: .top)
                     }
                   }
                 }
@@ -100,21 +101,14 @@ struct ChatView: View {
               }
           }
 
-          Button {
-            viewModel.selectNextThread()
-          } label: {
-            Text("Next thread")
+          Group {
+            Button("Next thread") { viewModel.selectNextThread() }
+              .keyboardShortcut(.downArrow, modifiers: .command)
+            Button("Previous thread") { viewModel.selectPreviousThread() }
+              .keyboardShortcut(.upArrow, modifiers: .command)
           }
           .opacity(0)
-          .keyboardShortcut(KeyEquivalent.downArrow, modifiers: .command)
-
-          Button {
-            viewModel.selectPreviousThread()
-          } label: {
-            Text("Previous thread")
-          }
-          .opacity(0)
-          .keyboardShortcut(KeyEquivalent.upArrow, modifiers: .command)
+          .frame(height: 0)
 
           ChatBoxView(
             userMessage: $userMessage,
@@ -133,7 +127,7 @@ struct ChatView: View {
         .id(thread.id)
       }
       .padding(.bottom, 12)
-      .background(Color(.black).opacity(0.2))
+      .background(.black.opacity(0.2))
     } else {
       VStack(spacing: 16) {
         Image(systemName: "flag.checkered")
@@ -152,7 +146,7 @@ struct ChatView: View {
           .padding(.horizontal, 24)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Color(.black).opacity(0.1))
+      .background(.black.opacity(0.1))
     }
   }
 
@@ -160,11 +154,12 @@ struct ChatView: View {
     let textToSend = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !textToSend.isEmpty else { return }
 
+    sentMessage = true
+
     Task {
       await viewModel.sendMessage(textToSend)
     }
 
     userMessage = ""
-    sentMessage = true
   }
 }
