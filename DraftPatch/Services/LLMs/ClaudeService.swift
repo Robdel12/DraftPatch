@@ -75,12 +75,21 @@ final class ClaudeService: LLMService {
             ]
           }
 
-          let requestBody: [String: Any] = [
+          var requestBody: [String: Any] = [
             "model": modelName,
             "messages": anthropicMessages,
             "max_tokens": 4096,
             "stream": true,
           ]
+
+          if modelName.contains("claude-3-7") {
+            requestBody["thinking"] =
+              [
+                "type": "enabled",
+                "budget_tokens": 1024,
+              ] as [String: Any]
+          }
+
           let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: [.prettyPrinted])
           request.httpBody = jsonData
 
