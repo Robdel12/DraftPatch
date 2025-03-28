@@ -63,184 +63,192 @@ struct ModelPickerPopoverView: View {
         .stroke(Color.gray, lineWidth: 2)
     )
     .popover(isPresented: $isPopoverPresented) {
-      VStack(alignment: .leading, spacing: 12) {
-        Text("Select Model")
-          .font(.headline)
+      popoverContent
+    }
+  }
 
-        HStack {
-          Image(systemName: "magnifyingglass")
-            .foregroundColor(.secondary)
-          TextField("Search or download a model", text: $searchText)
-            .textFieldStyle(RoundedBorderTextFieldStyle())
-            .accessibilityIdentifier("ModelSearchField")
-            .focused($isSearchFieldFocused)
-            .onAppear {
-              isSearchFieldFocused = true
-              selectedIndex = 0
-            }
-            .onSubmit {
-              if !filteredModels.isEmpty {
-                selectModel(at: selectedIndex)
-              } else if canDownloadNewModel {
-                pullModel(modelName: searchText)
-              }
-            }
-            .onKeyPress(.upArrow) {
-              navigateUp()
-              return .handled
-            }
-            .onKeyPress(.downArrow) {
+  private var popoverContent: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Select Model")
+        .font(.headline)
+      searchBarView
+      Divider()
+      modelListView
+    }
+    .padding()
+    .frame(width: 300)
+    .onChange(of: downloadCompleted) { _, completed in
+      if completed {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+          let newModel = ChatModel(name: searchText, provider: .ollama)
+          viewModel.availableModels.append(newModel)
+          viewModel.selectedModel = newModel
+
+          // Reset states
+          downloadCompleted = false
+          searchText = ""
+          isPopoverPresented = false
+
+          Task {
+            await viewModel.loadLLMs()
+          }
+        }
+      }
+    }
+    .onChange(of: filteredModels.count) { _, newCount in
+      if selectedIndex >= newCount {
+        selectedIndex = newCount > 0 ? newCount - 1 : 0
+      }
+    }
+    .onChange(of: searchText) { _, _ in
+      selectedIndex = 0
+    }
+  }
+
+  private var searchBarView: some View {
+    HStack {
+      Image(systemName: "magnifyingglass")
+        .foregroundColor(.secondary)
+      TextField("Search or download a model", text: $searchText)
+        .textFieldStyle(RoundedBorderTextFieldStyle())
+        .accessibilityIdentifier("ModelSearchField")
+        .focused($isSearchFieldFocused)
+        .onAppear {
+          isSearchFieldFocused = true
+          selectedIndex = 0
+        }
+        .onSubmit {
+          if !filteredModels.isEmpty {
+            selectModel(at: selectedIndex)
+          } else if canDownloadNewModel {
+            pullModel(modelName: searchText)
+          }
+        }
+        .onKeyPress(.upArrow) {
+          navigateUp()
+          return .handled
+        }
+        .onKeyPress(.downArrow) {
+          navigateDown()
+          return .handled
+        }
+        .onKeyPress { keyPress in
+          if keyPress.phase == .down {
+            switch keyPress.characters {
+            case "n" where keyPress.modifiers.contains(.control):
               navigateDown()
               return .handled
-            }
-            .onKeyPress { keyPress in
-              if keyPress.phase == .down {
-                switch keyPress.characters {
-                case "n" where keyPress.modifiers.contains(.control):
-                  navigateDown()
-                  return .handled
-                case "p" where keyPress.modifiers.contains(.control):
-                  navigateUp()
-                  return .handled
-                case "g" where keyPress.modifiers.contains(.control):
-                  isPopoverPresented = false
-                  return .handled
-                default:
-                  return .ignored
-                }
-              }
+            case "p" where keyPress.modifiers.contains(.control):
+              navigateUp()
+              return .handled
+            case "g" where keyPress.modifiers.contains(.control):
+              isPopoverPresented = false
+              return .handled
+            default:
               return .ignored
             }
+          }
+          return .ignored
         }
+    }
+  }
 
-        Divider()
-
-        ScrollViewReader { proxy in
-          ScrollView {
-            LazyVStack(alignment: .leading, spacing: 4) {
-              if filteredModels.isEmpty && !canDownloadNewModel {
-                Text("No matching models found")
-                  .foregroundColor(.secondary)
-                  .padding(.vertical, 8)
-              } else {
-                ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
-                  ModelPickerRow(
-                    model: model,
-                    isSelected: model.id == viewModel.selectedModel?.id,
-                    isHighlighted: selectedIndex == index
-                  )
-                  .id(index)
-                  .onTapGesture {
-                    selectModel(at: index)
-                  }
-                  .contextMenu {
-                    if model.provider == .ollama {
-                      Button(role: .destructive) {
-                        deleteModel(modelName: model.name)
-                      } label: {
-                        Text("Delete")
-                      }
-                    }
-                  }
-                }
-
-                if canDownloadNewModel {
-                  if !filteredModels.isEmpty {
-                    Divider()
-                      .padding(.vertical, 4)
-                  }
-
-                  if isPullingModel {
-                    VStack(alignment: .leading, spacing: 8) {
-                      Text(statusMessage)
-                        .foregroundColor(.secondary)
-
-                      ProgressView(value: downloadProgress)
-                        .progressViewStyle(LinearProgressViewStyle())
-                    }
-                    .padding(.vertical, 8)
-                  } else if downloadCompleted {
-                    HStack {
-                      Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                      Text("Download complete!")
-                        .foregroundColor(.green)
-                    }
-                    .padding(.vertical, 8)
-                  } else if downloadFailed {
-                    VStack(alignment: .leading, spacing: 4) {
-                      HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                          .foregroundColor(.red)
-                        Text("Download failed")
-                          .foregroundColor(.red)
-                      }
-                      Text(errorMessage)
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .lineLimit(2)
-                    }
-                    .padding(.vertical, 8)
-                  } else {
-                    Button(action: {
-                      pullModel(modelName: searchText)
-                    }) {
-                      HStack {
-                        Image(systemName: "arrow.down.circle")
-                          .foregroundColor(.accentColor)
-                        Text("Download \(searchText)")
-                          .foregroundColor(.accentColor)
-                        Spacer()
-                      }
-                      .padding(.vertical, 8)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .background(
-                      selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
-                    )
-                    .cornerRadius(4)
-                    .id(filteredModels.count)
+  private var modelListView: some View {
+    ScrollViewReader { proxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 4) {
+          if filteredModels.isEmpty && !canDownloadNewModel {
+            Text("No matching models found")
+              .foregroundColor(.secondary)
+              .padding(.vertical, 8)
+          } else {
+            ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
+              ModelPickerRow(
+                model: model,
+                isSelected: model.id == viewModel.selectedModel?.id,
+                isHighlighted: selectedIndex == index
+              )
+              .id(index)
+              .onTapGesture {
+                selectModel(at: index)
+              }
+              .contextMenu {
+                if model.provider == .ollama {
+                  Button(role: .destructive) {
+                    deleteModel(modelName: model.name)
+                  } label: {
+                    Text("Delete")
                   }
                 }
               }
             }
 
-          }
-          .frame(height: min(350, CGFloat(filteredModels.count * 40 + (canDownloadNewModel ? 60 : 0))))
-          .onChange(of: selectedIndex) { _, newIndex in
-            withAnimation {
-              proxy.scrollTo(newIndex, anchor: .bottom)
+            if canDownloadNewModel {
+              if !filteredModels.isEmpty {
+                Divider()
+                  .padding(.vertical, 4)
+              }
+
+              if isPullingModel {
+                VStack(alignment: .leading, spacing: 8) {
+                  Text(statusMessage)
+                    .foregroundColor(.secondary)
+
+                  ProgressView(value: downloadProgress)
+                    .progressViewStyle(LinearProgressViewStyle())
+                }
+                .padding(.vertical, 8)
+              } else if downloadCompleted {
+                HStack {
+                  Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                  Text("Download complete!")
+                    .foregroundColor(.green)
+                }
+                .padding(.vertical, 8)
+              } else if downloadFailed {
+                VStack(alignment: .leading, spacing: 4) {
+                  HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                      .foregroundColor(.red)
+                    Text("Download failed")
+                      .foregroundColor(.red)
+                  }
+                  Text(errorMessage)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .lineLimit(2)
+                }
+                .padding(.vertical, 8)
+              } else {
+                Button(action: {
+                  pullModel(modelName: searchText)
+                }) {
+                  HStack {
+                    Image(systemName: "arrow.down.circle")
+                      .foregroundColor(.accentColor)
+                    Text("Download \(searchText)")
+                      .foregroundColor(.accentColor)
+                    Spacer()
+                  }
+                  .padding(.vertical, 8)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .background(
+                  selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
+                )
+                .cornerRadius(4)
+                .id(filteredModels.count)
+              }
             }
           }
         }
       }
-      .padding()
-      .frame(width: 300)
-      .onChange(of: downloadCompleted) { _, completed in
-        if completed {
-          DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            let newModel = ChatModel(name: searchText, provider: .ollama)
-            viewModel.availableModels.append(newModel)
-            viewModel.selectedModel = newModel
-
-            // Reset states
-            downloadCompleted = false
-            searchText = ""
-            isPopoverPresented = false
-
-            Task {
-              await viewModel.loadLLMs()
-            }
-          }
+      .frame(height: min(350, CGFloat(filteredModels.count * 40 + (canDownloadNewModel ? 60 : 0))))
+      .onChange(of: selectedIndex) { _, newIndex in
+        withAnimation {
+          proxy.scrollTo(newIndex, anchor: .bottom)
         }
-      }
-      .onChange(of: filteredModels.count) { _, newCount in
-        if selectedIndex >= newCount {
-          selectedIndex = newCount > 0 ? newCount - 1 : 0
-        }
-      }
-      .onChange(of: searchText) { _, _ in
-        selectedIndex = 0
       }
     }
   }
