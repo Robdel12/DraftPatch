@@ -19,15 +19,9 @@ private func parseMessage(_ text: String) -> [MessageSegment] {
   var remainingText = text
 
   while true {
-    print("parseMessage: Starting iteration. Remaining text: \(remainingText)")
-
     // Find the next occurrence of either tag
     let thinkRange = remainingText.range(of: "<think>")
     let userCodeRange = remainingText.range(of: "<userSelectedCode>")
-
-    print(
-      "parseMessage: thinkRange: \(String(describing: thinkRange)), userCodeRange: \(String(describing: userCodeRange))"
-    )
 
     // Determine which tag comes first
     var startRange: Range<String.Index>?
@@ -47,18 +41,12 @@ private func parseMessage(_ text: String) -> [MessageSegment] {
       startRange = userCodeRange
       tagMatch = "<userSelectedCode>"
     } else {
-      print("parseMessage: No more tags found. Breaking loop.")
+      // No more tags found
       break
-    }
-
-    if let startRange = startRange {
-      let pos = remainingText.distance(from: remainingText.startIndex, to: startRange.lowerBound)
-      print("parseMessage: Found \(tagMatch) tag at position \(pos)")
     }
 
     // Append any text before the tag
     let beforeTag = String(remainingText[..<startRange!.lowerBound])
-    print("parseMessage: Text before tag: \(beforeTag)")
     if !beforeTag.isEmpty {
       segments.append(.normal(beforeTag))
     }
@@ -71,15 +59,11 @@ private func parseMessage(_ text: String) -> [MessageSegment] {
 
     if let endRange = afterOpenTag.range(of: closingTag) {
       let content = String(afterOpenTag[..<endRange.lowerBound])
-      print("parseMessage: Found content for \(tagMatch): \(content)")
       segments.append(tagMatch == "<think>" ? .think(content) : .userSelectedCode(content))
       remainingText = String(afterOpenTag[endRange.upperBound...])
-      print("parseMessage: Remaining text after processing tag: \(remainingText)")
     } else {
+      // If no closing tag is found, treat the rest as content
       let content = String(afterOpenTag)
-      print(
-        "parseMessage: No closing tag \(closingTag) found. Appending remaining text as content for \(tagMatch): \(content)"
-      )
       segments.append(tagMatch == "<think>" ? .think(content) : .userSelectedCode(content))
       remainingText = ""
     }
@@ -114,13 +98,13 @@ struct CollapsibleThinkView: View {
           HStack {
             Image(systemName: "brain.head.profile")
             Text(isStreaming ? "Reasoning..." : "Reasoned")
-              .font(.subheadline)
+              .font(.system(size: 14))
           }
           .padding(8)
           .background(Color.blue.opacity(0.1))
           .cornerRadius(8)
         }
-        .buttonStyle(PlainButtonStyle())  // Removes default button styling
+        .buttonStyle(PlainButtonStyle())
       }
     )
     .accentColor(.blue)

@@ -14,6 +14,9 @@ struct MarkdownCodeView: View {
 
   var body: some View {
     Markdown(text)
+      .markdownTextStyle {
+        FontSize(14)
+      }
       .markdownBlockStyle(\.codeBlock) { configuration in
         SyntaxHighlightedCodeBlock(code: configuration.content, language: configuration.language)
       }
@@ -31,7 +34,7 @@ struct SyntaxHighlightedCodeBlock: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack {
         Text(language ?? "Code")
-          .font(.system(size: 12, weight: .medium, design: .monospaced))
+          .font(.system(size: 14, weight: .medium, design: .monospaced))
           .foregroundColor(.white)
 
         Spacer()
@@ -42,7 +45,7 @@ struct SyntaxHighlightedCodeBlock: View {
             Text("Copy")
           }
           .foregroundColor(.white)
-          .font(.system(size: 12, weight: .medium, design: .monospaced))
+          .font(.system(size: 14, weight: .medium, design: .monospaced))
         }
         .buttonStyle(BorderlessButtonStyle())
       }
