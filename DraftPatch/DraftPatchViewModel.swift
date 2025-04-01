@@ -46,6 +46,11 @@ class DraftPatchViewModel: ObservableObject {
   @Published var settings: Settings? = nil
   @Published var errorMessage: String? = nil
 
+  var isAwaitingResponse: Bool {
+    guard let thread = selectedThread, let lastMessage = thread.messages.last else { return false }
+    return lastMessage.role == .assistant && lastMessage.streaming && lastMessage.text.isEmpty
+  }
+
   init(repository: DraftPatchRepository, llmManager: LLMManager = LLMManager.shared) {
     self.repository = repository
     self.llmManager = llmManager
@@ -304,29 +309,5 @@ class DraftPatchViewModel: ObservableObject {
   private func generateTitle(for text: String, using model: ChatModel) async throws -> String {
     return try await llmManager.getService(for: model.provider)
       .generateTitle(for: text, modelName: model.name)
-  }
-
-  func selectPreviousThread() {
-    guard !chatThreads.isEmpty else { return }
-
-    if let currentThread = selectedThread,
-      let index = chatThreads.firstIndex(where: { $0.id == currentThread.id })
-    {
-      selectedThread = index > 0 ? chatThreads[index - 1] : chatThreads.last
-    } else {
-      selectedThread = chatThreads.last
-    }
-  }
-
-  func selectNextThread() {
-    guard !chatThreads.isEmpty else { return }
-
-    if let currentThread = selectedThread,
-      let index = chatThreads.firstIndex(where: { $0.id == currentThread.id })
-    {
-      selectedThread = index < chatThreads.count - 1 ? chatThreads[index + 1] : chatThreads.first
-    } else {
-      selectedThread = chatThreads.first
-    }
   }
 }

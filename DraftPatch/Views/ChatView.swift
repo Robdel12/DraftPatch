@@ -48,6 +48,11 @@ struct ChatView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
+                    if viewModel.isAwaitingResponse {
+                      LoadingAnimationView()
+                        .padding(.vertical, 8)
+                    }
+
                     if sentMessage && (sortedMessages.filter { $0.role == .user }.count > 1) {
                       Spacer(minLength: currentViewportHeight - 150)
                         .id("bottomSpacer")
