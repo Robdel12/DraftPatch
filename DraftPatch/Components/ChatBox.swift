@@ -50,7 +50,7 @@ struct ChatBoxView: View {
   }
 
   var body: some View {
-    VStack(spacing: 16) {
+    VStack(spacing: 10) {
       if let app = selectedDraftApp {
         VStack(alignment: .leading, spacing: 0) {
           HStack(spacing: 8) {
@@ -90,7 +90,7 @@ struct ChatBoxView: View {
         Button(action: {
           isShowingPopover.toggle()
         }) {
-          Image(systemName: "car.side.air.fresh")
+          Image(systemName: "cursorarrow.motionlines")
             .font(.title3)
             .foregroundStyle(selectedDraftApp != nil ? .blue : .gray)
         }

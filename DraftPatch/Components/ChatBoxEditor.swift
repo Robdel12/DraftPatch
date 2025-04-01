@@ -11,7 +11,7 @@ import SwiftUI
 struct ChatBoxEditor: View {
   @Binding var userMessage: String
   @Binding var isTextFieldFocused: Bool
-  @State private var textEditorHeight: CGFloat = 15
+  @State private var textEditorHeight: CGFloat = 8
 
   let thinking: Bool
   let onSubmit: () -> Void
@@ -30,21 +30,20 @@ struct ChatBoxEditor: View {
 
       Text(userMessage.isEmpty ? " " : userMessage)
         .font(.system(size: 14, weight: .regular, design: .rounded))
-        .padding(8)
         .frame(maxWidth: .infinity)
         .background(
           GeometryReader { geometry in
             Color.clear
-              .onAppear { textEditorHeight = max(15, geometry.size.height + 16) }
+              .onAppear { textEditorHeight = max(8, geometry.size.height + 8) }
               .onChange(of: userMessage) {
-                textEditorHeight = max(15, geometry.size.height + 16)
+                textEditorHeight = max(15, geometry.size.height + 8)
               }
           }
         )
         .opacity(0)
 
       CustomTextEditor(text: $userMessage, isFocused: $isTextFieldFocused, thinking: thinking)
-        .frame(minHeight: 15, maxHeight: textEditorHeight)
+        .frame(minHeight: 8, maxHeight: textEditorHeight)
         .font(.system(size: 14, weight: .regular, design: .rounded))
         .disabled(thinking)
         .accessibilityLabel(thinking ? "Sending..." : "Draft a message")
