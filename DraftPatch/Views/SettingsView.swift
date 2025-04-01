@@ -41,7 +41,7 @@ struct SettingsView: View {
 
           Divider()
 
-          if isAnyLLMEnabled {
+          if isAnyLLMEnabled && viewModel.availableModels.isEmpty == false {
             Picker("Select Default Model", selection: $selectedDefaultModel) {
               Text("None").tag(nil as ChatModel?)
               ForEach(viewModel.availableModels) { model in

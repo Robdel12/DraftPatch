@@ -84,13 +84,6 @@ struct RootView: View {
           if viewModel.availableModels.count > 0 {
             ModelPickerPopoverView()
               .environmentObject(viewModel)
-          } else {
-            Button {
-              viewModel.showSettings.toggle()
-            } label: {
-              Text("Enable an LLM provider")
-              Image(systemName: "arrowshape.right.fill")
-            }
           }
         }
 

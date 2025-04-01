@@ -40,11 +40,11 @@ final class DraftPatchUITests: XCTestCase {
 
     XCTAssertTrue(app.wait(for: .runningForeground, timeout: 5))
 
-    let noChatSelectedText = app.staticTexts["No chat selected"]
+    let noChatSelectedText = app.staticTexts["No Threads Available"]
     XCTAssertTrue(
-      noChatSelectedText.waitForExistence(timeout: 2), "The 'No chat selected' text is not visible")
+      noChatSelectedText.waitForExistence(timeout: 2), "The 'No threads available' text is not visible")
 
-    let startDraftingText = app.staticTexts["Select a chat and start drafting!"]
+    let startDraftingText = app.staticTexts["Create a new thread to start drafting!"]
     XCTAssertTrue(
       startDraftingText.waitForExistence(timeout: 2),
       "The 'Select a chat and start drafting!' text is not visible")
