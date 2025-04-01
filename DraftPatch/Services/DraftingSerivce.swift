@@ -25,34 +25,6 @@ final class DraftingService: ObservableObject {
     DispatchQueue.main.async {
       self.hasAccessibilityPermission = isTrusted
     }
-
-    if !isTrusted {
-      DispatchQueue.main.async {
-        self.showAccessibilityAlert()
-      }
-    }
-  }
-
-  /// Displays an alert prompting the user to enable Accessibility Permissions
-  private func showAccessibilityAlert() {
-    let alert = NSAlert()
-    alert.messageText = "Accessibility Permissions Required"
-    alert.informativeText =
-      "DraftPatch needs Accessibility permissions to read text from other applications. Please enable it in System Preferences."
-    alert.alertStyle = .warning
-    alert.addButton(withTitle: "Open System Preferences")
-    alert.addButton(withTitle: "Cancel")
-
-    let response = alert.runModal()
-    if response == .alertFirstButtonReturn {
-      openAccessibilityPreferences()
-    }
-  }
-
-  /// Opens System Preferences to the Accessibility section
-  private func openAccessibilityPreferences() {
-    let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-    NSWorkspace.shared.open(url)
   }
 
   /// Returns the AXUIElement of a specified application by bundle identifier
