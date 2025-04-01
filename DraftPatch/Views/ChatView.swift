@@ -72,18 +72,12 @@ struct ChatView: View {
                   scrollProxy.scrollTo(sentMessage ? "bottomSpacer" : "bottomAnchor", anchor: .bottom)
                 }
               }
-              .onChange(of: viewModel.selectedThread?.messages) { _, newMessages in
-                guard let messages = newMessages, !messages.isEmpty else { return }
+              .onChange(of: viewModel.lastUserMessageID) { _, newID in
+                guard let newID else { return }
 
-                // Find the latest message overall
-                let latestMessage = messages.max(by: { $0.timestamp < $1.timestamp })
-
-                // Only scroll-to-top if the latest message is from the user
-                if latestMessage?.role == .user {
-                  DispatchQueue.main.async {
-                    withAnimation(.smooth) {
-                      scrollViewProxy?.scrollTo(latestMessage!.id, anchor: .top)
-                    }
+                DispatchQueue.main.async {
+                  withAnimation(.smooth) {
+                    scrollViewProxy?.scrollTo(newID, anchor: .top)
                   }
                 }
               }
@@ -101,15 +95,6 @@ struct ChatView: View {
                 }
               }
           }
-
-          Group {
-            Button("Next thread") { viewModel.selectNextThread() }
-              .keyboardShortcut(.downArrow, modifiers: .command)
-            Button("Previous thread") { viewModel.selectPreviousThread() }
-              .keyboardShortcut(.upArrow, modifiers: .command)
-          }
-          .opacity(0)
-          .frame(height: 0)
 
           ChatBoxView(
             userMessage: $userMessage,

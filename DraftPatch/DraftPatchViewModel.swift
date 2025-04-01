@@ -33,6 +33,7 @@ class DraftPatchViewModel: ObservableObject {
   @Published var thinking: Bool = false
   @Published var showSettings: Bool = false
   @Published var chatBoxFocused: Bool = true
+  @Published var lastUserMessageID: UUID?
 
   @Published var isDraftingEnabled: Bool = false
   @Published var selectedDraftApp: DraftApp? = nil {
@@ -116,6 +117,7 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
+    loadSettings()
     self.availableModels = await llmManager.loadLLMs(settings, existingModels: availableModels)
   }
 
@@ -222,6 +224,7 @@ class DraftPatchViewModel: ObservableObject {
 
     let userMsg = ChatMessage(text: messageText, role: .user)
     thread.messages.append(userMsg)
+    lastUserMessageID = userMsg.id
 
     let messagesPayload = thread.messages.map { msg in
       ChatMessagePayload(role: msg.role, content: msg.text)
