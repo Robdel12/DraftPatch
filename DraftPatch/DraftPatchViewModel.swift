@@ -293,6 +293,7 @@ class DraftPatchViewModel: ObservableObject {
         }
 
         thinking = false
+        chatThreads = chatThreads.sorted { $0.updatedAt > $1.updatedAt }
       }
     }
   }
