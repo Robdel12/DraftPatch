@@ -16,7 +16,7 @@ struct SettingsView: View {
   @State private var selectedDefaultModel: ChatModel?
 
   @State private var isOllamaEnabled: Bool = false
-  @State private var ollamaAPIURL: String = ""
+  @State private var ollamaAPIURL: String = "http://localhost:11434"
 
   @State private var isOpenAIEnabled: Bool = false
   @State private var openAIApiKey: String = ""
@@ -285,5 +285,9 @@ struct SettingsView: View {
     }
 
     try? modelContext.save()
+
+    Task {
+      await viewModel.loadLLMs()
+    }
   }
 }
