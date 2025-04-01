@@ -18,6 +18,7 @@ enum LLMProvider: String, Codable {
 @Model
 final class ChatModel: Identifiable, Equatable {
   var name: String
+  var displayName: String { name }
   var provider: LLMProvider
   var lastUsed: Date?
 
@@ -31,6 +32,7 @@ final class ChatModel: Identifiable, Equatable {
 
   static func == (lhs: ChatModel, rhs: ChatModel) -> Bool {
     return lhs.name == rhs.name
+    && lhs.displayName == rhs.displayName
     && lhs.provider == rhs.provider
     && lhs.lastUsed == rhs.lastUsed
   }

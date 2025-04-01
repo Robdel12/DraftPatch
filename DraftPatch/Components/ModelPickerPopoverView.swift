@@ -79,15 +79,8 @@ struct ModelPickerPopoverView: View {
     .frame(width: 300)
     .onChange(of: downloadCompleted) { _, completed in
       if completed {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-          let newModel = ChatModel(name: searchText, provider: .ollama)
-          viewModel.availableModels.append(newModel)
-          viewModel.selectedModel = newModel
-
-          // Reset states
-          downloadCompleted = false
-          searchText = ""
-          isPopoverPresented = false
+        DispatchQueue.main.async {
+          self.resetDownloadState()
 
           Task {
             await viewModel.loadLLMs()
@@ -335,6 +328,12 @@ struct ModelPickerPopoverView: View {
           downloadFailed = true
           errorMessage = error.localizedDescription
         }
+        DispatchQueue.main.async {
+          self.resetDownloadState()
+          Task {
+            await viewModel.loadLLMs()
+          }
+        }
       }
     }
   }
@@ -344,6 +343,20 @@ struct ModelPickerPopoverView: View {
     formatter.allowedUnits = [.useKB, .useMB, .useGB]
     formatter.countStyle = .file
     return formatter.string(fromByteCount: bytes)
+  }
+
+  @MainActor
+  private func resetDownloadState() {
+    downloadCompleted = false
+    downloadFailed = false
+    isPullingModel = false
+    downloadProgress = 0.0
+    statusMessage = ""
+    errorMessage = ""
+    currentDigest = ""
+    searchText = ""
+    isPopoverPresented = false
+    selectedIndex = 0
   }
 }
 
