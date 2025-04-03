@@ -47,7 +47,7 @@ struct SettingsView: View {
           } else {
             Picker("Default Chat Model", selection: $selectedDefaultModel) {
               Text("None").tag(nil as ChatModel?)
-              ForEach(viewModel.availableModels) { model in
+              ForEach(viewModel.availableModels.filter { $0.enabled }) { model in
                 Text(model.displayName).tag(model as ChatModel?)
               }
             }

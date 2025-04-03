@@ -23,7 +23,9 @@ struct ModelPickerPopoverView: View {
   @FocusState private var isSearchFieldFocused: Bool
 
   var filteredModels: [ChatModel] {
-    let sortedModels = viewModel.availableModels.sorted {
+    let enabledModels = viewModel.availableModels.filter { $0.enabled }
+
+    let sortedModels = enabledModels.sorted {
       guard let date1 = $0.lastUsed, let date2 = $1.lastUsed else {
         return $0.lastUsed != nil
       }
@@ -275,7 +277,9 @@ struct ModelPickerPopoverView: View {
       do {
         try await OllamaService.shared.deleteModel(modelName: modelName)
         viewModel.availableModels.removeAll { $0.name == modelName }
-        if let firstAvailable = viewModel.availableModels.first, viewModel.selectedModel?.name == modelName {
+        if let firstAvailable = viewModel.availableModels.first(where: { $0.enabled }),
+          viewModel.selectedModel?.name == modelName
+        {
           viewModel.selectedModel = firstAvailable
         }
         print("Model deleted successfully.")
