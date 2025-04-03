@@ -11,7 +11,9 @@ final class ClaudeService: LLMService {
   static let shared = ClaudeService()
 
   let endpointURL = URL(string: "https://api.anthropic.com/v1")!
-  let apiKey: String? = KeychainHelper.shared.load(for: "anthropic_api_key")
+  var apiKey: String? {
+    KeychainHelper.shared.load(for: "anthropic_api_key")
+  }
 
   var streamChatTask: Task<Void, Never>?
   var isCancelled = false

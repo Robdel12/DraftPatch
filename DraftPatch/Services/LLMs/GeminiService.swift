@@ -11,7 +11,9 @@ final class GeminiService: LLMService {
   static let shared = GeminiService()
 
   let endpointURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models")!
-  let apiKey: String? = KeychainHelper.shared.load(for: "gemini_api_key") ?? ""
+  var apiKey: String? {
+    KeychainHelper.shared.load(for: "gemini_api_key")
+  }
 
   var isCancelled: Bool = false
 
@@ -46,21 +48,10 @@ final class GeminiService: LLMService {
     }
 
     let decoded = try JSONDecoder().decode(ModelsResponse.self, from: data)
-    // TODO: Add to settings? Probably (x2)
-    let allowedModels: Set<String> = [
-      "gemini-1.5-pro",
-      "gemini-1.5-flash",
-      "gemini-2.0-pro",
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-2.5-pro-exp-03-25",
-    ]
 
-    return decoded.models.compactMap { modelInfo in
+    return decoded.models.map { modelInfo in
       let rawName = modelInfo.name
-      let modelName = rawName.hasPrefix("models/") ? String(rawName.dropFirst("models/".count)) : rawName
-
-      return allowedModels.contains(modelName) ? modelName : nil
+      return rawName.hasPrefix("models/") ? String(rawName.dropFirst("models/".count)) : rawName
     }
   }
 

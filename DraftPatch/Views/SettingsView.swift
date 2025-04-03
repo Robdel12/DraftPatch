@@ -35,25 +35,41 @@ struct SettingsView: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          Text("Default Chat Model")
+          Text("Chat Models")
             .font(.title3)
             .bold()
 
           Divider()
 
-          if isAnyLLMEnabled && viewModel.availableModels.isEmpty == false {
-            Picker("Select Default Model", selection: $selectedDefaultModel) {
+          if viewModel.availableModels.isEmpty {
+            Text("No models available.")
+              .foregroundColor(.gray)
+          } else {
+            Picker("Default Chat Model", selection: $selectedDefaultModel) {
               Text("None").tag(nil as ChatModel?)
               ForEach(viewModel.availableModels) { model in
-                Text(model.name).tag(model as ChatModel?)
+                Text(model.displayName).tag(model as ChatModel?)
               }
             }
             .frame(maxWidth: 420)
-          } else {
-            Text("Enable an LLM provider to pick a default")
-              .foregroundColor(.white)
-              .font(.body)
           }
+
+          NavigationLink(
+            "Manage Models",
+            destination: ManageModelsView { edits in
+              for model in viewModel.availableModels {
+                if let edit = edits[model.name] {
+                  model.displayName = edit.displayName
+                  model.enabled = edit.enabled
+                }
+              }
+
+              try? modelContext.save()
+
+              Task {
+                await viewModel.loadLLMs()
+              }
+            })
 
           Text("Ollama Settings")
             .font(.title3)
@@ -144,9 +160,9 @@ struct SettingsView: View {
     }
   }
 
+  @MainActor
   private func loadSettings() {
-    guard let existingSettings = settings.first else {
-      createInitialSettings()
+    guard let existingSettings = settings.first ?? createAndReturnInitialSettings() else {
       return
     }
 
@@ -165,8 +181,8 @@ struct SettingsView: View {
       ollamaAPIURL = ollamaConfig.endpointURL.absoluteString
     } else {
       let newConfig = OllamaConfig(enabled: false)
-      existingSettings.ollamaConfig = newConfig
       modelContext.insert(newConfig)
+      existingSettings.ollamaConfig = newConfig
       isOllamaEnabled = newConfig.enabled
     }
 
@@ -177,8 +193,8 @@ struct SettingsView: View {
       }
     } else {
       let newConfig = OpenAIConfig(enabled: false, apiKeyIdentifier: "openai_api_key")
-      existingSettings.openAIConfig = newConfig
       modelContext.insert(newConfig)
+      existingSettings.openAIConfig = newConfig
       isOpenAIEnabled = newConfig.enabled
       openAIApiKey = ""
     }
@@ -190,8 +206,8 @@ struct SettingsView: View {
       }
     } else {
       let newConfig = GeminiConfig(enabled: false, apiKeyIdentifier: "gemini_api_key")
-      existingSettings.geminiConfig = newConfig
       modelContext.insert(newConfig)
+      existingSettings.geminiConfig = newConfig
       isGeminiEnabled = newConfig.enabled
       geminiApiKey = ""
     }
@@ -203,49 +219,32 @@ struct SettingsView: View {
       }
     } else {
       let newConfig = AnthropicConfig(enabled: false, apiKeyIdentifier: "anthropic_api_key")
-      existingSettings.anthropicConfig = newConfig
       modelContext.insert(newConfig)
+      existingSettings.anthropicConfig = newConfig
       isAnthropicEnabled = newConfig.enabled
       anthropicApiKey = ""
     }
-  }
 
-  private func createInitialSettings() {
-    let newSettings = Settings()
-    modelContext.insert(newSettings)
-
-    let openAIConfig = OpenAIConfig(enabled: false, apiKeyIdentifier: "openai_api_key")
-    let geminiConfig = GeminiConfig(enabled: false, apiKeyIdentifier: "gemini_api_key")
-    let anthropicConfig = AnthropicConfig(enabled: false, apiKeyIdentifier: "anthropic_api_key")
-
-    newSettings.openAIConfig = openAIConfig
-    newSettings.geminiConfig = geminiConfig
-    newSettings.anthropicConfig = anthropicConfig
-
-    modelContext.insert(openAIConfig)
-    modelContext.insert(geminiConfig)
-    modelContext.insert(anthropicConfig)
-
-    newSettings.defaultModel = nil
-
-    isOpenAIEnabled = false
-    openAIApiKey = ""
-    isGeminiEnabled = false
-    geminiApiKey = ""
-    isAnthropicEnabled = false
-    anthropicApiKey = ""
+    try? modelContext.save()
   }
 
   private func saveSettings() {
-    guard let existingSettings = settings.first else {
+    guard let existingSettings = settings.first ?? createAndReturnInitialSettings() else {
       return
     }
 
-    existingSettings.defaultModel = selectedDefaultModel
+    let viewContext = self.modelContext
+
+    if let selected = selectedDefaultModel {
+      let selectedModelID = selected.persistentModelID
+      let modelInCorrectContext = viewContext.model(for: selectedModelID) as? ChatModel
+      existingSettings.defaultModel = modelInCorrectContext
+    } else {
+      existingSettings.defaultModel = nil
+    }
 
     if let ollamaConfig = existingSettings.ollamaConfig {
       ollamaConfig.enabled = isOllamaEnabled
-
       if let validURL = URL(string: ollamaAPIURL), !ollamaAPIURL.isEmpty {
         ollamaConfig.endpointURL = validURL
       } else {
@@ -284,10 +283,48 @@ struct SettingsView: View {
       }
     }
 
-    try? modelContext.save()
+    try? viewContext.save()
+
+    DispatchQueue.main.async {
+      self.viewModel.settings = existingSettings
+    }
 
     Task {
       await viewModel.loadLLMs()
     }
+  }
+
+  private func createAndReturnInitialSettings() -> Settings? {
+    let viewContext = self.modelContext
+
+    let newSettings = Settings()
+    viewContext.insert(newSettings)
+
+    let ollamaConfig = OllamaConfig(enabled: isOllamaEnabled)
+    viewContext.insert(ollamaConfig)
+    newSettings.ollamaConfig = ollamaConfig
+
+    let openAIConfig = OpenAIConfig(enabled: isOpenAIEnabled, apiKeyIdentifier: "openai_api_key")
+    viewContext.insert(openAIConfig)
+    newSettings.openAIConfig = openAIConfig
+
+    let geminiConfig = GeminiConfig(enabled: isGeminiEnabled, apiKeyIdentifier: "gemini_api_key")
+    viewContext.insert(geminiConfig)
+    newSettings.geminiConfig = geminiConfig
+
+    let anthropicConfig = AnthropicConfig(enabled: isAnthropicEnabled, apiKeyIdentifier: "anthropic_api_key")
+    viewContext.insert(anthropicConfig)
+    newSettings.anthropicConfig = anthropicConfig
+
+    if let selected = selectedDefaultModel {
+      let selectedModelID = selected.persistentModelID
+      let modelInCorrectContext = viewContext.model(for: selectedModelID) as? ChatModel
+      newSettings.defaultModel = modelInCorrectContext
+    } else {
+      newSettings.defaultModel = nil
+    }
+
+    try? viewContext.save()
+    return newSettings
   }
 }

@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 class SwiftDataDraftPatchRepository: DraftPatchRepository {
-  private var context: ModelContext
+  var context: ModelContext
 
   init(context: ModelContext) {
     self.context = context

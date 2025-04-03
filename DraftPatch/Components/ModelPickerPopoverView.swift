@@ -48,7 +48,7 @@ struct ModelPickerPopoverView: View {
       isPopoverPresented.toggle()
     } label: {
       HStack {
-        Text(viewModel.selectedModel?.name ?? "")
+        Text(viewModel.selectedModel?.displayName ?? "")
         Image(systemName: "chevron.down")
       }
       .padding(8)
@@ -367,7 +367,7 @@ struct ModelPickerRow: View {
 
   var body: some View {
     HStack {
-      Text(model.name)
+      Text(model.displayName)
         .foregroundColor(isSelected ? .white : .primary)
 
       Spacer()

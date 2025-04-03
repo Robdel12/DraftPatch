@@ -11,7 +11,9 @@ final class OpenAIService: LLMService {
   static let shared = OpenAIService()
 
   let endpointURL: URL = URL(string: "https://api.openai.com/v1")!
-  let apiKey: String? = KeychainHelper.shared.load(for: "openai_api_key") ?? ""
+  var apiKey: String? {
+    KeychainHelper.shared.load(for: "openai_api_key")
+  }
 
   var isCancelled: Bool = false
 
@@ -35,11 +37,8 @@ final class OpenAIService: LLMService {
     }
 
     let decodedResponse = try JSONDecoder().decode(ModelsResponse.self, from: data)
-    // TODO: Add to settings? Probably
-    let modelsToKeep: Set<String> = ["o1", "o1-mini", "gpt-4o", "gpt-4o-mini", "o3-mini"]
     let filteredModels = decodedResponse.data
       .map { $0.id }
-      .filter { modelsToKeep.contains($0) }
 
     return filteredModels
   }

@@ -59,12 +59,14 @@ private func parseMessage(_ text: String) -> [MessageSegment] {
 
     if let endRange = afterOpenTag.range(of: closingTag) {
       let content = String(afterOpenTag[..<endRange.lowerBound])
-      segments.append(tagMatch == "<think>" ? .think(content) : .userSelectedCode(content))
+      let escapedContent = content.replacingOccurrences(of: "```", with: "\\`\\`\\`")
+      segments.append(tagMatch == "<think>" ? .think(escapedContent) : .userSelectedCode(escapedContent))
       remainingText = String(afterOpenTag[endRange.upperBound...])
     } else {
       // If no closing tag is found, treat the rest as content
       let content = String(afterOpenTag)
-      segments.append(tagMatch == "<think>" ? .think(content) : .userSelectedCode(content))
+      let escapedContent = content.replacingOccurrences(of: "```", with: "\\`\\`\\`")
+      segments.append(tagMatch == "<think>" ? .think(escapedContent) : .userSelectedCode(escapedContent))
       remainingText = ""
     }
   }

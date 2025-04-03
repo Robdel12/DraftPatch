@@ -24,12 +24,7 @@ class LLMManager {
   func loadLLMs(_ settings: Settings?, existingModels: [ChatModel]) async -> [ChatModel] {
     var availableModels: [ChatModel] = []
 
-    let providers: [(enabled: Bool, service: LLMService, provider: LLMProvider)] = [
-      (settings?.ollamaConfig?.enabled ?? false, OllamaService.shared, .ollama),
-      (settings?.openAIConfig?.enabled ?? false, OpenAIService.shared, .openai),
-      (settings?.geminiConfig?.enabled ?? false, GeminiService.shared, .gemini),
-      (settings?.anthropicConfig?.enabled ?? false, ClaudeService.shared, .anthropic),
-    ]
+    let providers = makeProviders(from: settings)
 
     await withTaskGroup(of: [ChatModel].self) { group in
       for provider in providers where provider.enabled {
@@ -43,11 +38,15 @@ class LLMManager {
               }) {
                 return existingModel
               } else {
-                return ChatModel(name: modelName, provider: provider.provider)
+                return ChatModel(
+                  name: modelName,
+                  provider: provider.provider,
+                  displayName: LLMModelNamer.prettyPrint(modelName)
+                )
               }
             }
           } catch {
-            print("Error loading \(provider.provider) models: \(error)")
+            print("Error fetching models for \(provider.provider): \(error)")
             return []
           }
         }
@@ -59,5 +58,16 @@ class LLMManager {
     }
 
     return Array(Set(availableModels))  // Remove duplicates if any
+  }
+
+  private func makeProviders(from settings: Settings?) -> [(
+    enabled: Bool, service: LLMService, provider: LLMProvider
+  )] {
+    return [
+      (settings?.ollamaConfig?.enabled ?? false, OllamaService.shared, .ollama),
+      (settings?.openAIConfig?.enabled ?? false, OpenAIService.shared, .openai),
+      (settings?.geminiConfig?.enabled ?? false, GeminiService.shared, .gemini),
+      (settings?.anthropicConfig?.enabled ?? false, ClaudeService.shared, .anthropic),
+    ]
   }
 }

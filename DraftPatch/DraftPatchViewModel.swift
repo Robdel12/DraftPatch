@@ -122,8 +122,18 @@ class DraftPatchViewModel: ObservableObject {
   }
 
   func loadLLMs() async {
-    loadSettings()
-    self.availableModels = await llmManager.loadLLMs(settings, existingModels: availableModels)
+    let models = await llmManager.loadLLMs(settings, existingModels: availableModels)
+
+    do {
+      for model in models {
+        try repository.insertModel(model)
+      }
+      try repository.save()
+
+      self.availableModels = models
+    } catch {
+      print("Error saving models: \(error)")
+    }
   }
 
   func toggleDraftWithLastApp() {
