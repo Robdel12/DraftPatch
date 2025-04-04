@@ -56,20 +56,11 @@ struct SettingsView: View {
 
           NavigationLink(
             "Manage Models",
-            destination: ManageModelsView { edits in
-              for model in viewModel.availableModels {
-                if let edit = edits[model.name] {
-                  model.displayName = edit.displayName
-                  model.enabled = edit.enabled
-                }
-              }
-
-              try? modelContext.save()
-
-              Task {
-                await viewModel.loadLLMs()
-              }
-            })
+            destination: ManageModelsView(
+              availableModels: viewModel.availableModels,
+              modelContext: modelContext
+            )
+            .environment(\.modelContext, modelContext))
 
           Text("Ollama Settings")
             .font(.title3)
