@@ -37,7 +37,8 @@ class MockLLMService: LLMService {
 
   func streamChat(
     messages: [ChatMessagePayload],
-    modelName: String
+    modelName: String,
+    model: ChatModel
   ) -> AsyncThrowingStream<String, Error> {
     AsyncThrowingStream { continuation in
       let tokens = [
@@ -69,7 +70,7 @@ class MockLLMService: LLMService {
   func singleChatCompletion(
     message: String,
     modelName: String,
-    systemPrompt: String? = nil
+    model: ChatModel
   ) async throws -> String {
     return "Mock single completion for message: \(message)"
   }

@@ -22,7 +22,8 @@ protocol LLMService {
   // Perform a one-off chat completion with streaming
   func streamChat(
     messages: [ChatMessagePayload],
-    modelName: String
+    modelName: String,
+    model: ChatModel
   ) -> AsyncThrowingStream<String, Error>
 
   // Cancels the current streaming chat response
@@ -32,13 +33,14 @@ protocol LLMService {
   func singleChatCompletion(
     message: String,
     modelName: String,
-    systemPrompt: String?
+    model: ChatModel
   ) async throws -> String
 
   // Generate a chat title with the currently loaded/used LLM
   func generateTitle(
     for message: String,
-    modelName: String
+    modelName: String,
+    model: ChatModel
   ) async throws -> String
 }
 
@@ -50,7 +52,7 @@ struct ChatMessagePayload {
 
 extension LLMService {
   // Generate a title for the chat thread based on the user's first message
-  func generateTitle(for message: String, modelName: String) async throws -> String {
+  func generateTitle(for message: String, modelName: String, model: ChatModel) async throws -> String {
     let prompt = """
       Summarize the following message into a short title (5 words or less). \
       Do not include quotes or punctuation. Only output the final short title. \
@@ -59,7 +61,7 @@ extension LLMService {
       \(message)
       """
 
-    let rawTitle = try await singleChatCompletion(message: prompt, modelName: modelName, systemPrompt: nil)
+    let rawTitle = try await singleChatCompletion(message: prompt, modelName: modelName, model: model)
 
     let cleanedTitle =
       rawTitle

@@ -173,20 +173,19 @@ class ManageModelsViewModel: ObservableObject {
   {
     Binding(
       get: {
-        if self.editedModels[modelId] == nil,
-          let model = self.originalModels.first(where: { $0.id == modelId })
-        {
-          self.editedModels[modelId] = ModelEditState.from(model)
-        }
         return self.editedModels[modelId]?[keyPath: keyPath] ?? ""
       },
       set: { newValue in
-        if self.editedModels[modelId] == nil,
-          let model = self.originalModels.first(where: { $0.id == modelId })
-        {
+        if self.editedModels[modelId] == nil {
+          guard let model = self.originalModels.first(where: { $0.id == modelId }) else {
+            print("Warning: Original model with id \(modelId) not found for editing.")
+            return
+          }
           self.editedModels[modelId] = ModelEditState.from(model)
         }
+
         guard self.editedModels[modelId] != nil else { return }
+
         self.editedModels[modelId]?[keyPath: keyPath] = newValue.isEmpty ? nil : newValue
       }
     )

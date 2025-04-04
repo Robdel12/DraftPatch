@@ -45,7 +45,8 @@ final class OpenAIService: LLMService {
 
   func streamChat(
     messages: [ChatMessagePayload],
-    modelName: String
+    modelName: String,
+    model: ChatModel
   ) -> AsyncThrowingStream<String, Error> {
     isCancelled = false
 
@@ -58,18 +59,45 @@ final class OpenAIService: LLMService {
           request.setValue("Bearer \(apiKey ?? "")", forHTTPHeaderField: "Authorization")
           request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-          let requestBody =
-            [
-              "model": modelName,
-              "messages": messages.map { ["role": $0.role.rawValue, "content": $0.content] },
-              "stream": true,
-            ] as [String: Any]
+          var preparedMessages = messages.map { ["role": $0.role.rawValue, "content": $0.content] }
+
+          if let systemPrompt = model.defaultSystemPrompt, !systemPrompt.isEmpty {
+            preparedMessages.insert(["role": "system", "content": systemPrompt], at: 0)
+          }
+
+          var requestBody: [String: Any] = [
+            "model": modelName,
+            "messages": preparedMessages,
+            "stream": true,
+          ]
+
+          if let temp = model.defaultTemperature {
+            requestBody["temperature"] = temp
+          }
+          if let topP = model.defaultTopP {
+            requestBody["top_p"] = topP
+          }
+          if let maxTokens = model.defaultMaxTokens {
+            requestBody["max_tokens"] = maxTokens
+          }
 
           request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
           let (stream, response) = try await URLSession.shared.bytes(for: request)
           guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw URLError(.badServerResponse)
+            var errorData = Data()
+            for try await chunk in stream {
+              errorData.append(chunk)
+            }
+            let errorString = String(data: errorData, encoding: .utf8) ?? "<no body>"
+            print("streamChat error. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            print("Body: \(errorString)")
+            throw URLError(
+              .badServerResponse,
+              userInfo: [
+                NSLocalizedDescriptionKey:
+                  "HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1): \(errorString)"
+              ])
           }
 
           for try await line in stream.lines {
@@ -111,6 +139,7 @@ final class OpenAIService: LLMService {
 
           continuation.finish()
         } catch {
+          print("OpenAI streamChat error: \(error)")
           continuation.finish(throwing: error)
         }
       }
@@ -124,7 +153,7 @@ final class OpenAIService: LLMService {
   func singleChatCompletion(
     message: String,
     modelName: String,
-    systemPrompt: String?
+    model: ChatModel
   ) async throws -> String {
     let url = endpointURL.appendingPathComponent("chat/completions")
     var request = URLRequest(url: url)
@@ -132,28 +161,46 @@ final class OpenAIService: LLMService {
     request.setValue("Bearer \(apiKey ?? "")", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    let messages: [[String: Any]] = [
-      ["role": "system", "content": systemPrompt ?? ""],
-      ["role": "user", "content": message],
-    ].filter { $0["content"] as? String != "" }
+    var messages: [[String: Any]] = []
+    if let systemPrompt = model.defaultSystemPrompt, !systemPrompt.isEmpty {
+      messages.append(["role": "system", "content": systemPrompt])
+    }
+    messages.append(["role": "user", "content": message])
 
-    let requestBody =
-      [
-        "model": modelName,
-        "messages": messages,
-      ] as [String: Any]
+    var requestBody: [String: Any] = [
+      "model": modelName,
+      "messages": messages,
+    ]
+
+    if let temp = model.defaultTemperature {
+      requestBody["temperature"] = temp
+    }
+    if let topP = model.defaultTopP {
+      requestBody["top_p"] = topP
+    }
+    if let maxTokens = model.defaultMaxTokens {
+      requestBody["max_tokens"] = maxTokens
+    }
 
     request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
     let (data, response) = try await URLSession.shared.data(for: request)
     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-      throw URLError(.badServerResponse)
+      let errorString = String(data: data, encoding: .utf8) ?? "<no body>"
+      print("singleChatCompletion error. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+      print("Body: \(errorString)")
+      throw URLError(
+        .badServerResponse,
+        userInfo: [
+          NSLocalizedDescriptionKey:
+            "HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1): \(errorString)"
+        ])
     }
 
     struct Response: Codable {
       struct Choice: Codable {
         struct Message: Codable {
-          let content: String
+          let content: String?  // Content can be nil sometimes
         }
         let message: Message
       }

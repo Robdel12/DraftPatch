@@ -56,7 +56,11 @@ final class GeminiService: LLMService {
   }
 
   // MARK: - Streaming Chat
-  func streamChat(messages: [ChatMessagePayload], modelName: String) -> AsyncThrowingStream<String, Error> {
+  func streamChat(
+    messages: [ChatMessagePayload],
+    modelName: String,
+    model: ChatModel
+  ) -> AsyncThrowingStream<String, Error> {
     isCancelled = false
 
     return AsyncThrowingStream { continuation in
@@ -81,13 +85,18 @@ final class GeminiService: LLMService {
 
           // Body format:
           // {
-          //   "contents": [
-          //     { "role": "user", "parts": [ {"text": "..."} ] },
-          //     { "role": "model","parts": [ {"text": "..."} ] }
-          //   ]
+          //   "contents": [ ... ],
+          //   "systemInstruction": { "parts": [ {"text": "..."} ] }, // Optional
+          //   "generationConfig": { // Optional
+          //     "temperature": 0.9,
+          //     "topP": 1.0,
+          //     "maxOutputTokens": 2048
+          //   }
           // }
           struct RequestBody: Encodable {
             let contents: [Content]
+            let systemInstruction: SystemInstruction?
+            let generationConfig: GenerationConfig?
           }
           struct Content: Encodable {
             let role: String?
@@ -95,6 +104,14 @@ final class GeminiService: LLMService {
           }
           struct Part: Encodable {
             let text: String
+          }
+          struct SystemInstruction: Encodable {
+            let parts: [Part]
+          }
+          struct GenerationConfig: Encodable {
+            let temperature: Double?
+            let topP: Double?
+            let maxOutputTokens: Int?  // Note: API uses maxOutputTokens
           }
 
           // Filter out messages with empty content
@@ -108,22 +125,69 @@ final class GeminiService: LLMService {
             return Content(role: role, parts: [Part(text: msg.content)])
           }
 
-          let requestBody = RequestBody(contents: contents)
+          // Prepare optional components
+          var systemInstruction: SystemInstruction?
+          if let sysPrompt = model.defaultSystemPrompt, !sysPrompt.isEmpty {
+            systemInstruction = SystemInstruction(parts: [Part(text: sysPrompt)])
+          }
+
+          var generationConfig: GenerationConfig?
+          if model.defaultTemperature != nil || model.defaultTopP != nil || model.defaultMaxTokens != nil {
+            generationConfig = GenerationConfig(
+              temperature: model.defaultTemperature,
+              topP: model.defaultTopP,
+              maxOutputTokens: model.defaultMaxTokens
+            )
+          }
+
+          let requestBody = RequestBody(
+            contents: contents,
+            systemInstruction: systemInstruction,
+            generationConfig: generationConfig
+          )
+
           request.httpBody = try JSONEncoder().encode(requestBody)
 
           // Perform SSE streaming request
           let (byteStream, response) = try await URLSession.shared.bytes(for: request)
-          guard let httpResponse = response as? HTTPURLResponse,
-            (200..<300).contains(httpResponse.statusCode)
+          guard let httpResponse = response as? HTTPURLResponse
           else {
+            print("streamChat error: Response is not HTTPURLResponse")
+            throw URLError(.badServerResponse)
+          }
+
+          guard (200..<300).contains(httpResponse.statusCode) else {
             var errorData = Data()
             for try await chunk in byteStream {
               errorData.append(chunk)
             }
             let errorString = String(data: errorData, encoding: .utf8) ?? "<no body>"
-            print("streamChat error. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            print("streamChat error. Status: \(httpResponse.statusCode)")
             print("Body: \(errorString)")
-            throw URLError(.badServerResponse)
+            // Try to parse Gemini-specific error (Assuming ErrorDetails struct exists elsewhere or defined below)
+            struct ErrorDetails: Decodable {  // Define if not global
+              let code: Int?
+              let message: String?
+              let status: String?
+            }
+            if let jsonData = try? JSONDecoder().decode([String: ErrorDetails].self, from: errorData),
+              let errorDetails = jsonData["error"],
+              let errorMessage = errorDetails.message
+            {
+              let userInfo = [
+                NSLocalizedDescriptionKey:
+                  "Gemini API Error: \(errorMessage) (Code: \(errorDetails.code ?? -1))"
+              ]
+              continuation.finish(
+                throwing: NSError(domain: "GeminiError", code: httpResponse.statusCode, userInfo: userInfo))
+              return
+            } else {
+              continuation.finish(
+                throwing: URLError(
+                  .badServerResponse,
+                  userInfo: [NSLocalizedDescriptionKey: "HTTP \(httpResponse.statusCode): \(errorString)"]))
+              return
+            }
           }
 
           // Read lines from SSE: each line typically starts with "data: "
@@ -138,24 +202,37 @@ final class GeminiService: LLMService {
             guard let data = jsonString.data(using: .utf8) else { continue }
 
             do {
-              if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                let candidates = json["candidates"] as? [[String: Any]],
-                let firstCandidate = candidates.first,
-                let content = firstCandidate["content"] as? [String: Any],
-                let parts = content["parts"] as? [[String: Any]],
-                let text = parts.first?["text"] as? String
-              {
+              // Gemini Stream Response structure
+              // { "candidates": [ { "content": { "parts": [ {"text": "..."} ], "role": "model" }, ... } ] }
+              struct StreamResponse: Decodable {
+                struct Candidate: Decodable {
+                  struct Content: Decodable {
+                    struct Part: Decodable {
+                      let text: String?
+                    }
+                    let parts: [Part]?
+                  }
+                  let content: Content?
+                }
+                let candidates: [Candidate]?
+              }
+
+              let decoded = try JSONDecoder().decode(StreamResponse.self, from: data)
+
+              if let text = decoded.candidates?.first?.content?.parts?.first?.text {
                 continuation.yield(text)
               }
             } catch {
               // SSE can push partial lines or other event data. Usually safe to ignore.
-              print("Non-JSON SSE line: \(line)")
+              print("Non-JSON/unparsable SSE line: \(line)")
+              print("Parsing error: \(error)")
             }
           }
 
           continuation.finish()
 
         } catch {
+          print("Gemini streamChat error: \(error)")
           continuation.finish(throwing: error)
         }
       }
@@ -170,7 +247,7 @@ final class GeminiService: LLMService {
   func singleChatCompletion(
     message: String,
     modelName: String,
-    systemPrompt: String?
+    model: ChatModel
   ) async throws -> String {
     guard let apiKey = apiKey, !apiKey.isEmpty else {
       throw URLError(.badServerResponse)
@@ -186,44 +263,105 @@ final class GeminiService: LLMService {
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    let combinedText =
-      systemPrompt.flatMap { $0.isEmpty ? nil : $0 }
-      .map { "\($0)\n\n\(message)" } ?? message
-
     struct RequestBody: Encodable {
       let contents: [Content]
+      let systemInstruction: SystemInstruction?
+      let generationConfig: GenerationConfig?  // Add generation config here too
     }
     struct Content: Encodable {
+      let role: String?  // Role is optional for single-turn user message
       let parts: [Part]
     }
     struct Part: Encodable {
       let text: String
     }
+    struct SystemInstruction: Encodable {
+      let parts: [Part]
+    }
+    struct GenerationConfig: Encodable {
+      let temperature: Double?
+      let topP: Double?
+      let maxOutputTokens: Int?
+    }
+    struct ErrorDetails: Decodable {  // Define ErrorDetails here as well if needed for single completion error handling
+      let code: Int?
+      let message: String?
+      let status: String?
+    }
 
-    let body = RequestBody(contents: [
-      Content(parts: [Part(text: combinedText)])
-    ])
+    // Prepare optional components
+    var systemInstruction: SystemInstruction?
+    if let sysPrompt = model.defaultSystemPrompt, !sysPrompt.isEmpty {
+      systemInstruction = SystemInstruction(parts: [Part(text: sysPrompt)])
+    }
+
+    var generationConfig: GenerationConfig?
+    if model.defaultTemperature != nil || model.defaultTopP != nil || model.defaultMaxTokens != nil {
+      generationConfig = GenerationConfig(
+        temperature: model.defaultTemperature,
+        topP: model.defaultTopP,
+        maxOutputTokens: model.defaultMaxTokens ?? 2048  // Provide a default if needed for single completion
+      )
+    }
+
+    // For single completion, just send the user message. System prompt is handled separately.
+    let body = RequestBody(
+      contents: [Content(role: "user", parts: [Part(text: message)])],
+      systemInstruction: systemInstruction,
+      generationConfig: generationConfig
+    )
     request.httpBody = try JSONEncoder().encode(body)
 
     let (data, response) = try await URLSession.shared.data(for: request)
-    guard let httpResponse = response as? HTTPURLResponse,
-      (200..<300).contains(httpResponse.statusCode)
-    else {
-      // If non-2xx, attempt to read the error body for details
-      let errorString = String(data: data, encoding: .utf8) ?? "<no body>"
-      print("singleChatCompletion error. Status: \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-      print("Body: \(errorString)")
-      throw URLError(.badServerResponse)
+    guard let httpResponse = response as? HTTPURLResponse else {
+      throw URLError(
+        .badServerResponse, userInfo: [NSLocalizedDescriptionKey: "Response was not HTTPURLResponse"])
     }
 
-    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-      let candidates = json["candidates"] as? [[String: Any]],
-      let firstCandidate = candidates.first,
-      let content = firstCandidate["content"] as? [String: Any],
-      let parts = content["parts"] as? [[String: Any]],
-      let text = parts.first?["text"] as? String
-    {
-      return text
+    guard (200..<300).contains(httpResponse.statusCode) else {
+      let errorString = String(data: data, encoding: .utf8) ?? "<no body>"
+      print("singleChatCompletion error. Status: \(httpResponse.statusCode)")
+      print("Body: \(errorString)")
+      // Try to parse Gemini-specific error
+      if let jsonData = try? JSONDecoder().decode([String: ErrorDetails].self, from: data),
+        let errorDetails = jsonData["error"],
+        let errorMessage = errorDetails.message
+      {
+        let userInfo = [
+          NSLocalizedDescriptionKey: "Gemini API Error: \(errorMessage) (Code: \(errorDetails.code ?? -1))"
+        ]
+        throw NSError(domain: "GeminiError", code: httpResponse.statusCode, userInfo: userInfo)
+      } else {
+        throw URLError(
+          .badServerResponse,
+          userInfo: [NSLocalizedDescriptionKey: "HTTP \(httpResponse.statusCode): \(errorString)"])
+      }
+    }
+
+    // Gemini Non-Stream Response structure
+    // { "candidates": [ { "content": { "parts": [ {"text": "..."} ], "role": "model" }, ... } ] }
+    struct SingleResponse: Decodable {
+      struct Candidate: Decodable {
+        struct Content: Decodable {
+          struct Part: Decodable {
+            let text: String
+          }
+          let parts: [Part]
+        }
+        let content: Content
+      }
+      let candidates: [Candidate]
+    }
+
+    do {
+      let decoded = try JSONDecoder().decode(SingleResponse.self, from: data)
+      if let text = decoded.candidates.first?.content.parts.first?.text {
+        return text
+      }
+    } catch {
+      print("Error decoding singleChatCompletion response: \(error)")
+      print("Raw data: \(String(data: data, encoding: .utf8) ?? "nil")")
+      throw URLError(.cannotParseResponse)
     }
 
     throw URLError(.cannotParseResponse)

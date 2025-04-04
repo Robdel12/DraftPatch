@@ -53,7 +53,8 @@ final class ClaudeService: LLMService {
 
   func streamChat(
     messages: [ChatMessagePayload],
-    modelName: String
+    modelName: String,
+    model: ChatModel
   ) -> AsyncThrowingStream<String, Error> {
     isCancelled = false
 
@@ -80,9 +81,19 @@ final class ClaudeService: LLMService {
           var requestBody: [String: Any] = [
             "model": modelName,
             "messages": anthropicMessages,
-            "max_tokens": 4096,
+            "max_tokens": model.defaultMaxTokens ?? 4096,
             "stream": true,
           ]
+
+          if let systemPrompt = model.defaultSystemPrompt, !systemPrompt.isEmpty {
+            requestBody["system"] = systemPrompt
+          }
+          if let temperature = model.defaultTemperature {
+            requestBody["temperature"] = temperature
+          }
+          if let topP = model.defaultTopP {
+            requestBody["top_p"] = topP
+          }
 
           if modelName.contains("claude-3-7") {
             requestBody["thinking"] =
@@ -198,7 +209,7 @@ final class ClaudeService: LLMService {
   func singleChatCompletion(
     message: String,
     modelName: String,
-    systemPrompt: String? = nil
+    model: ChatModel
   ) async throws -> String {
     let url = endpointURL.appendingPathComponent("messages")
     var request = URLRequest(url: url)
@@ -221,7 +232,7 @@ final class ClaudeService: LLMService {
       "max_tokens": 256,
     ]
 
-    if let systemPrompt = systemPrompt, !systemPrompt.isEmpty {
+    if let systemPrompt = model.defaultSystemPrompt, !systemPrompt.isEmpty {
       requestBody["system"] = systemPrompt
     }
 

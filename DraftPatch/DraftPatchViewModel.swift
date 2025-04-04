@@ -313,12 +313,12 @@ class DraftPatchViewModel: ObservableObject {
     -> AsyncThrowingStream<String, Error>?
   {
     return llmManager.getService(for: thread.model.provider)
-      .streamChat(messages: messages, modelName: thread.model.name)
+      .streamChat(messages: messages, modelName: thread.model.name, model: thread.model)
   }
 
   /// Calls the appropriate service to generate a title based on the provider.
   private func generateTitle(for text: String, using model: ChatModel) async throws -> String {
     return try await llmManager.getService(for: model.provider)
-      .generateTitle(for: text, modelName: model.name)
+      .generateTitle(for: text, modelName: model.name, model: model)
   }
 }
