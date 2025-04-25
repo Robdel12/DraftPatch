@@ -123,7 +123,7 @@ struct ChatView: View {
                       .padding(.vertical, 8)
                   }
 
-                  if sentMessage && (sortedMessages.filter { $0.role == .user }.count > 1) {
+                  if sentMessage && (sortedMessages.filter { $0.role == .user }.count > 1) && viewModel.thinking {
                     Spacer(minLength: currentViewportHeight - 150)
                       .id("bottomSpacer")
                       .accessibilityIdentifier("dynamicSpacer")

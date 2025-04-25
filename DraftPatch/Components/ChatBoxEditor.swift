@@ -29,14 +29,14 @@ struct ChatBoxEditor: View {
       }
 
       Text(userMessage.isEmpty ? " " : userMessage)
-        .font(.system(size: 14, weight: .regular, design: .rounded))
+        .font(.system(size: 15, weight: .regular, design: .rounded))
         .frame(maxWidth: .infinity)
         .background(
           GeometryReader { geometry in
             Color.clear
-              .onAppear { textEditorHeight = max(8, geometry.size.height + 8) }
+              .onAppear { textEditorHeight = max(15, geometry.size.height + 10) }
               .onChange(of: userMessage) {
-                textEditorHeight = max(15, geometry.size.height + 8)
+                textEditorHeight = max(15, geometry.size.height + 12)
               }
           }
         )
