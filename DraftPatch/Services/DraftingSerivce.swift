@@ -73,20 +73,40 @@ final class DraftingService: ObservableObject {
 
   /// Helper function to get text from a given attribute
   private func getAttributeText(from element: AXUIElement, attribute: CFString) -> String? {
-    var text: AnyObject?
-    let result = AXUIElementCopyAttributeValue(element, attribute, &text)
+    var value: AnyObject?
+    let result = AXUIElementCopyAttributeValue(element, attribute, &value)
 
-    if result == .success {
-      if let textString = text as? String {
-        print("[AccessibilityTextService] Attribute \(attribute) found: \(textString.prefix(100))...")
-        return textString
-      } else {
-        print("[AccessibilityTextService] Attribute \(attribute) found but is not a string.")
-      }
-    } else {
-      print("[AccessibilityTextService] Failed to retrieve attribute \(attribute).")
+    guard result == .success, let retrievedValue = value else {
+      print("[AccessibilityTextService] Failed to retrieve attribute \(attribute). Error: \(result.rawValue)")
+      return nil
     }
 
+    // Check if the value is already a String
+    if let textString = retrievedValue as? String {
+      print("[AccessibilityTextService] Attribute \(attribute) retrieved directly as String: \(textString.prefix(100))...")
+      return textString
+    }
+
+    // Check if the value can be interpreted as Data and decoded as UTF-8
+    // Sometimes accessibility might return CFDataRef instead of CFStringRef
+    if CFGetTypeID(retrievedValue) == CFDataGetTypeID() {
+        if let data = retrievedValue as? Data, let textString = String(data: data, encoding: .utf8) {
+            print("[AccessibilityTextService] Attribute \(attribute) retrieved as Data and decoded as UTF-8: \(textString.prefix(100))...")
+            return textString
+        } else {
+             print("[AccessibilityTextService] Attribute \(attribute) retrieved as Data but failed to decode as UTF-8.")
+        }
+    }
+    
+    // Fallback check for other potential types if necessary, though String and Data cover most cases.
+    // For example, sometimes it might be an NSAttributedString
+    if let attributedString = retrievedValue as? NSAttributedString {
+        print("[AccessibilityTextService] Attribute \(attribute) retrieved as NSAttributedString, using its string value: \(attributedString.string.prefix(100))...")
+        return attributedString.string
+    }
+
+
+    print("[AccessibilityTextService] Attribute \(attribute) found but is not a recognizable String or decodable Data type. Type: \(type(of: retrievedValue))")
     return nil
   }
 
