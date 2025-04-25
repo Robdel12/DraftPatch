@@ -42,31 +42,38 @@ final class DraftingService: ObservableObject {
   /// Tries to get selected text from focused UI element (used for multiple applications)
   private func getSelectedText(from appElement: AXUIElement) -> String? {
     var focusedElement: AnyObject?
-    if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
-      == .success
-    {
-      let focusedUIElement = focusedElement as! AXUIElement
-      print("[AccessibilityTextService] Found focused UI element.")
-
-      if let selectedText = getAttributeText(
-        from: focusedUIElement, attribute: kAXSelectedTextAttribute as CFString)
-      {
-        print("[AccessibilityTextService] Found selected text.")
-        return selectedText
-      } else {
-        print("[AccessibilityTextService] No selected text found in focused UI element.")
-      }
-
-      // If no selected text, check if it's a text area and get full document text
-      if let role = getAttributeText(from: focusedUIElement, attribute: kAXRoleAttribute as CFString),
-        role == "AXTextArea"
-      {
-        print("[AccessibilityTextService] Focused element is a text area. Trying to get full document text.")
-        return getAttributeText(from: focusedUIElement, attribute: kAXValueAttribute as CFString)
-      }
-    } else {
-      print("[AccessibilityTextService] Could not retrieve focused UI element.")
+    guard
+      AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+        == .success,
+      let element = focusedElement,  // Ensure not nil first
+      CFGetTypeID(element) == AXUIElementGetTypeID()  // Check the CoreFoundation type ID
+    else {
+      print("[AccessibilityTextService] Could not retrieve focused UI element or it's not an AXUIElement.")
+      return nil
     }
+    let focusedUIElement = element as! AXUIElement  // Cast after type check
+
+    print("[AccessibilityTextService] Found focused UI element.")
+
+    if let selectedText = getAttributeText(
+      from: focusedUIElement,
+      attribute: kAXSelectedTextAttribute as CFString
+    ) {
+      print("[AccessibilityTextService] Found selected text.")
+      return selectedText
+    } else {
+      print("[AccessibilityTextService] No selected text found in focused UI element.")
+    }
+
+    // If no selected text, check if it's a text area and get full document text
+    if let role = getAttributeText(from: focusedUIElement, attribute: kAXRoleAttribute as CFString),
+      role == "AXTextArea"
+    {
+      print("[AccessibilityTextService] Focused element is a text area. Trying to get full document text.")
+      return getAttributeText(from: focusedUIElement, attribute: kAXValueAttribute as CFString)
+    }
+
+    // Removed the else block here as the function returns nil at the end anyway if nothing is found
 
     return nil
   }
@@ -83,30 +90,39 @@ final class DraftingService: ObservableObject {
 
     // Check if the value is already a String
     if let textString = retrievedValue as? String {
-      print("[AccessibilityTextService] Attribute \(attribute) retrieved directly as String: \(textString.prefix(100))...")
+      print(
+        "[AccessibilityTextService] Attribute \(attribute) retrieved directly as String: \(textString.prefix(100))..."
+      )
       return textString
     }
 
     // Check if the value can be interpreted as Data and decoded as UTF-8
     // Sometimes accessibility might return CFDataRef instead of CFStringRef
     if CFGetTypeID(retrievedValue) == CFDataGetTypeID() {
-        if let data = retrievedValue as? Data, let textString = String(data: data, encoding: .utf8) {
-            print("[AccessibilityTextService] Attribute \(attribute) retrieved as Data and decoded as UTF-8: \(textString.prefix(100))...")
-            return textString
-        } else {
-             print("[AccessibilityTextService] Attribute \(attribute) retrieved as Data but failed to decode as UTF-8.")
-        }
+      if let data = retrievedValue as? Data, let textString = String(data: data, encoding: .utf8) {
+        print(
+          "[AccessibilityTextService] Attribute \(attribute) retrieved as Data and decoded as UTF-8: \(textString.prefix(100))..."
+        )
+        return textString
+      } else {
+        print(
+          "[AccessibilityTextService] Attribute \(attribute) retrieved as Data but failed to decode as UTF-8."
+        )
+      }
     }
-    
+
     // Fallback check for other potential types if necessary, though String and Data cover most cases.
     // For example, sometimes it might be an NSAttributedString
     if let attributedString = retrievedValue as? NSAttributedString {
-        print("[AccessibilityTextService] Attribute \(attribute) retrieved as NSAttributedString, using its string value: \(attributedString.string.prefix(100))...")
-        return attributedString.string
+      print(
+        "[AccessibilityTextService] Attribute \(attribute) retrieved as NSAttributedString, using its string value: \(attributedString.string.prefix(100))..."
+      )
+      return attributedString.string
     }
 
-
-    print("[AccessibilityTextService] Attribute \(attribute) found but is not a recognizable String or decodable Data type. Type: \(type(of: retrievedValue))")
+    print(
+      "[AccessibilityTextService] Attribute \(attribute) found but is not a recognizable String or decodable Data type. Type: \(type(of: retrievedValue))"
+    )
     return nil
   }
 
@@ -118,35 +134,28 @@ final class DraftingService: ObservableObject {
 
     print("[AccessibilityTextService] Attempting to retrieve file extension from \(appIdentifier)...")
 
-    // Try to get the document path first (only works for some apps)
+    // Try to get the document path first
     if let documentPath = getAttributeText(from: appElement, attribute: kAXDocumentAttribute as CFString) {
-      let fileExtension = URL(fileURLWithPath: documentPath).pathExtension
-      print("[AccessibilityTextService] Found document path: \(documentPath), extension: \(fileExtension)")
-      return fileExtension.isEmpty ? nil : fileExtension
+      let url = URL(fileURLWithPath: documentPath)
+      // Ensure path extension is not empty before returning
+      if !url.pathExtension.isEmpty {
+        print(
+          "[AccessibilityTextService] Found document path: \(documentPath), extension: \(url.pathExtension)"
+        )
+        return url.pathExtension
+      }
     }
 
-    print("[AccessibilityTextService] No document path found. Trying main window title...")
+    print("[AccessibilityTextService] No document path found or extension empty. Trying main window title...")
 
-    // Get the frontmost window element
-    var windowElement: AnyObject?
-    if AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowElement) == .success,
-      let windowArray = windowElement as? [AXUIElement],
-      let mainWindow = windowArray.first
+    // Use helper to get title and extract extension
+    if let windowTitle = getMainWindowTitle(from: appElement),
+      let fileName = extractFileNameFromTitle(windowTitle)
     {
-
-      // Extract the window title
-      if let windowTitle = getAttributeText(from: mainWindow, attribute: kAXTitleAttribute as CFString) {
-        print("[AccessibilityTextService] Found window title: \(windowTitle)")
-
-        // Regex to find a valid filename with an extension
-        let regex = try! NSRegularExpression(pattern: #"\b[\w,\s-]+\.[A-Za-z0-9]+(?=\b|\s)"#, options: [])
-        let range = NSRange(location: 0, length: windowTitle.utf16.count)
-        if let match = regex.firstMatch(in: windowTitle, options: [], range: range) {
-          let matchedString = (windowTitle as NSString).substring(with: match.range)
-          let fileExtension = URL(fileURLWithPath: matchedString).pathExtension
-          print("[AccessibilityTextService] Extracted file extension: \(fileExtension)")
-          return fileExtension.isEmpty ? nil : fileExtension
-        }
+      let fileExtension = URL(fileURLWithPath: fileName).pathExtension
+      if !fileExtension.isEmpty {
+        print("[AccessibilityTextService] Extracted file extension from title: \(fileExtension)")
+        return fileExtension
       }
     }
 
@@ -165,7 +174,8 @@ final class DraftingService: ObservableObject {
     // Try to get selected text
     if let selectedText = getSelectedText(from: appElement), !selectedText.isEmpty {
       print(
-        "[AccessibilityTextService] Selected text found in \(appIdentifier): \(selectedText.prefix(100))...")
+        "[AccessibilityTextService] Selected text found in \(appIdentifier): \(selectedText.prefix(100))..."
+      )
       return selectedText
     }
 
@@ -186,24 +196,29 @@ final class DraftingService: ObservableObject {
   /// Retrieves the full contents of the current application's focused view
   private func getViewContent(from appElement: AXUIElement) -> String? {
     var focusedElement: AnyObject?
-    if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
-      == .success
-    {
-      let focusedUIElement = focusedElement as! AXUIElement
-      print("[AccessibilityTextService] Found focused UI element.")
+    guard
+      AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+        == .success,
+      let element = focusedElement,  // Ensure not nil first
+      CFGetTypeID(element) == AXUIElementGetTypeID()  // Check the CoreFoundation type ID
+    else {
+      print("[AccessibilityTextService] Could not retrieve focused UI element or it's not an AXUIElement.")
+      return nil
+    }
+    let focusedUIElement = element as! AXUIElement  // Cast after type check
 
-      // Attempt to get full text content of the view
-      if let fullText = getAttributeText(from: focusedUIElement, attribute: kAXValueAttribute as CFString) {
-        print("[AccessibilityTextService] Retrieved full text from view.")
-        return fullText
-      } else {
-        print("[AccessibilityTextService] Unable to retrieve full view content.")
-      }
+    print("[AccessibilityTextService] Found focused UI element.")
+
+    // Attempt to get full text content of the view
+    if let fullText = getAttributeText(from: focusedUIElement, attribute: kAXValueAttribute as CFString) {
+      print("[AccessibilityTextService] Retrieved full text from view.")
+      return fullText
     } else {
-      print("[AccessibilityTextService] Could not retrieve focused UI element.")
+      print("[AccessibilityTextService] Unable to retrieve full view content.")
+      return nil  // Explicitly return nil
     }
 
-    return nil
+    // Removed the else block here as the function returns nil if attribute retrieval fails
   }
 
   // Retrieves selected text details, including line numbers and file name
@@ -214,96 +229,111 @@ final class DraftingService: ObservableObject {
       return (nil, nil, nil)
     }
 
+    let currentFileName = getCurrentFileName(appIdentifier: appIdentifier)  // Get filename early
+
     print("[AccessibilityTextService] Retrieving selected text details from \(appIdentifier)...")
 
     // Get the full document text for line number calculations
     let fullText = getViewContent(from: appElement)
 
-    // Get the selected text
+    // Get the focused UI element
     var focusedElement: AnyObject?
     guard
       AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
-        == .success
+        == .success,
+      let element = focusedElement,  // Ensure not nil first
+      CFGetTypeID(element) == AXUIElementGetTypeID()  // Check the CoreFoundation type ID
     else {
-      print("[AccessibilityTextService] Could not retrieve focused UI element.")
-      return (nil, nil, getCurrentFileName(appIdentifier: appIdentifier))
+      print("[AccessibilityTextService] Could not retrieve focused UI element or it's not an AXUIElement.")
+      return (nil, nil, currentFileName)  // Return filename even if no selection
     }
+    let focusedUIElement = element as! AXUIElement  // Cast after type check
 
-    let focusedUIElement = focusedElement as! AXUIElement
-
+    // Get the selected text
     guard
       let selectedText = getAttributeText(
-        from: focusedUIElement, attribute: kAXSelectedTextAttribute as CFString),
+        from: focusedUIElement,
+        attribute: kAXSelectedTextAttribute as CFString
+      ),
       !selectedText.isEmpty
     else {
       print("[AccessibilityTextService] No selected text found.")
-      return (nil, nil, getCurrentFileName(appIdentifier: appIdentifier))
+      return (nil, nil, currentFileName)  // Return filename even if no selection
     }
 
     // Get selected text range, passing in full text for fallback
-    guard let selectedRange = getSelectedTextRange(from: appElement, fullText: fullText) else {
+    // Pass focusedUIElement directly instead of appElement to getSelectedTextRange
+    guard let selectedRange = getSelectedTextRange(from: focusedUIElement, fullText: fullText) else {
       print("[AccessibilityTextService] Unable to determine selected text range.")
-      return (selectedText, nil, getCurrentFileName(appIdentifier: appIdentifier))
+      return (selectedText, nil, currentFileName)
     }
 
     // Compute line numbers
     let lineNumbers = fullText != nil ? computeLineNumbers(from: fullText!, range: selectedRange) : nil
 
-    return (selectedText, lineNumbers, getCurrentFileName(appIdentifier: appIdentifier))
+    return (selectedText, lineNumbers, currentFileName)
   }
 
   /// Gets the selected text range as a tuple (start, length)
-  private func getSelectedTextRange(from appElement: AXUIElement, fullText: String?) -> (
+  // Changed parameter from appElement to focusedUIElement for clarity and directness
+  private func getSelectedTextRange(from focusedUIElement: AXUIElement, fullText: String?) -> (
     start: Int, length: Int
   )? {
-    // First, get the focused UI element
-    var focusedElement: AnyObject?
-    if AXUIElementCopyAttributeValue(appElement, kAXFocusedUIElementAttribute as CFString, &focusedElement)
-      != .success
-    {
-      print("[AccessibilityTextService] Could not retrieve focused UI element.")
-      return nil
-    }
-
-    let focusedUIElement = focusedElement as! AXUIElement
+    // No need to get focused element again, it's passed in
 
     // Try to get the selection range directly
     var rangeValue: AnyObject?
     let result = AXUIElementCopyAttributeValue(
-      focusedUIElement, kAXSelectedTextRangeAttribute as CFString, &rangeValue)
+      focusedUIElement,
+      kAXSelectedTextRangeAttribute as CFString,
+      &rangeValue
+    )
 
     if result == .success, let range = rangeValue as? CFRange {
-      print(
-        "[AccessibilityTextService] Successfully retrieved selected text range: \(range.location)-\(range.location + range.length)"
-      )
-      return (Int(range.location), Int(range.length))
+      // Ensure range values are sensible before returning
+      if range.location >= 0 && range.length >= 0 {
+        print(
+          "[AccessibilityTextService] Successfully retrieved selected text range: \(range.location)-\(range.location + range.length)"
+        )
+        return (Int(range.location), Int(range.length))
+      } else {
+        print("[AccessibilityTextService] Retrieved invalid selected text range: \(range)")
+      }
     } else {
       print(
-        "[AccessibilityTextService] Failed to retrieve AXSelectedTextRangeAttribute, attempting alternative methods..."
+        "[AccessibilityTextService] Failed to retrieve AXSelectedTextRangeAttribute (Error: \(result.rawValue)), attempting alternative methods..."
       )
     }
 
     // Alternative method 1: Try to get the selection range as a value instead of a CFRange
     if let selectedRangeStr = getAttributeText(
-      from: focusedUIElement, attribute: kAXSelectedTextRangeAttribute as CFString)
-    {
+      from: focusedUIElement,
+      attribute: kAXSelectedTextRangeAttribute as CFString
+    ) {
       print("[AccessibilityTextService] Got selection range as string: \(selectedRangeStr)")
       // Parse the range string if in a known format
       // Format might be like "{123, 45}" depending on the app
       let cleaned = selectedRangeStr.trimmingCharacters(in: CharacterSet(charactersIn: "{}"))
       let components = cleaned.components(separatedBy: ",")
       if components.count == 2,
-        let start = Int(components[0].trimmingCharacters(in: .whitespaces)),
-        let length = Int(components[1].trimmingCharacters(in: .whitespaces))
+        let startStr = components.first?.trimmingCharacters(in: .whitespacesAndNewlines),
+        let lengthStr = components.last?.trimmingCharacters(in: .whitespacesAndNewlines),
+        let start = Int(startStr), let length = Int(lengthStr),
+        start >= 0, length >= 0  // Add validation
       {
+        print("[AccessibilityTextService] Parsed range from string: start=\(start), length=\(length)")
         return (start, length)
+      } else {
+        print("[AccessibilityTextService] Failed to parse range from string: \(selectedRangeStr)")
       }
     }
 
     // Alternative method 2: Infer range from full text and selected text
     if let fullText = fullText,
       let selectedText = getAttributeText(
-        from: focusedUIElement, attribute: kAXSelectedTextAttribute as CFString),
+        from: focusedUIElement,
+        attribute: kAXSelectedTextAttribute as CFString
+      ),
       !selectedText.isEmpty
     {
 
@@ -311,10 +341,15 @@ final class DraftingService: ObservableObject {
       var visibleRange: (start: Int, length: Int)?
       var visibleRangeValue: AnyObject?
       if AXUIElementCopyAttributeValue(
-        focusedUIElement, kAXVisibleCharacterRangeAttribute as CFString, &visibleRangeValue) == .success,
-        let vRange = visibleRangeValue as? CFRange
+        focusedUIElement,
+        kAXVisibleCharacterRangeAttribute as CFString,
+        &visibleRangeValue
+      ) == .success,
+        let vRange = visibleRangeValue as? CFRange,
+        vRange.location >= 0, vRange.length >= 0  // Add validation
       {
         visibleRange = (Int(vRange.location), Int(vRange.length))
+        print("[AccessibilityTextService] Using visible range for search: \(visibleRange!)")
       }
 
       // Check if we can find the selection in the visible range first, then the full document
@@ -324,26 +359,41 @@ final class DraftingService: ObservableObject {
           "[AccessibilityTextService] Computed selection range from text: \(range.start)-\(range.start + range.length)"
         )
         return range
+      } else {
+        print(
+          "[AccessibilityTextService] Could not find selection '\(selectedText.prefix(50))...' within full text using findSelectionRange."
+        )
       }
+    } else if fullText == nil {
+      print("[AccessibilityTextService] Cannot infer range: full text is nil.")
+    } else if getAttributeText(from: focusedUIElement, attribute: kAXSelectedTextAttribute as CFString) == nil
+    {
+      print("[AccessibilityTextService] Cannot infer range: selected text is nil.")
     }
 
-    print("[AccessibilityTextService] Unable to determine selected text range.")
+    print("[AccessibilityTextService] Unable to determine selected text range through any method.")
     return nil
   }
 
   /// Helper function to find the selection range in text
   private func findSelectionRange(
-    in fullText: String, selectedText: String, visibleRange: (start: Int, length: Int)?
+    in fullText: String,
+    selectedText: String,
+    visibleRange: (start: Int, length: Int)?
   ) -> (start: Int, length: Int)? {
     // If we know the visible range, try to find the selection within that range first
     if let visibleRange = visibleRange {
       let visibleStartIndex = fullText.index(
-        fullText.startIndex, offsetBy: min(visibleRange.start, fullText.count - 1))
+        fullText.startIndex,
+        offsetBy: min(visibleRange.start, fullText.count - 1)
+      )
       let visibleEndIndex = fullText.index(
         visibleStartIndex,
         offsetBy: min(
           visibleRange.length,
-          fullText.count - fullText.distance(from: fullText.startIndex, to: visibleStartIndex) - 1))
+          fullText.count - fullText.distance(from: fullText.startIndex, to: visibleStartIndex) - 1
+        )
+      )
       let visibleText = fullText[visibleStartIndex..<visibleEndIndex]
 
       if let range = visibleText.range(of: selectedText) {
@@ -365,14 +415,22 @@ final class DraftingService: ObservableObject {
     if selectedText.count > 10 {  // Only try this for substantial selections to avoid false positives
       // Create a simplified version of both texts (removing extra whitespace)
       let simplifiedFullText = fullText.replacingOccurrences(
-        of: "\\s+", with: " ", options: .regularExpression)
+        of: "\\s+",
+        with: " ",
+        options: .regularExpression
+      )
       let simplifiedSelection = selectedText.replacingOccurrences(
-        of: "\\s+", with: " ", options: .regularExpression)
+        of: "\\s+",
+        with: " ",
+        options: .regularExpression
+      )
 
       if let range = simplifiedFullText.range(of: simplifiedSelection) {
         // This is approximate, but better than nothing
         let approxStart = simplifiedFullText.distance(
-          from: simplifiedFullText.startIndex, to: range.lowerBound)
+          from: simplifiedFullText.startIndex,
+          to: range.lowerBound
+        )
         return (approxStart, selectedText.count)
       }
     }
@@ -419,37 +477,75 @@ final class DraftingService: ObservableObject {
 
     // Try to get document path first
     if let documentPath = getAttributeText(from: appElement, attribute: kAXDocumentAttribute as CFString) {
-      let fileName = URL(fileURLWithPath: documentPath).lastPathComponent
-      print("[AccessibilityTextService] Found document path: \(documentPath), file: \(fileName)")
-      return fileName
-    }
-
-    print("[AccessibilityTextService] No document path found. Trying main window title...")
-
-    // Get the frontmost window element
-    var windowElement: AnyObject?
-    if AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowElement) == .success,
-      let windowArray = windowElement as? [AXUIElement],
-      let mainWindow = windowArray.first
-    {
-
-      // Extract the window title
-      if let windowTitle = getAttributeText(from: mainWindow, attribute: kAXTitleAttribute as CFString) {
-        print("[AccessibilityTextService] Found window title: \(windowTitle)")
-
-        // Extract the file name from the title
-        let regex = try! NSRegularExpression(pattern: #"\b[\w,\s-]+\.[A-Za-z0-9]+(?=\b|\s)"#, options: [])
-        let range = NSRange(location: 0, length: windowTitle.utf16.count)
-        if let match = regex.firstMatch(in: windowTitle, options: [], range: range) {
-          let matchedString = (windowTitle as NSString).substring(with: match.range)
-          let fileName = URL(fileURLWithPath: matchedString).lastPathComponent
-          print("[AccessibilityTextService] Extracted file name: \(fileName)")
-          return fileName
-        }
+      let url = URL(fileURLWithPath: documentPath)
+      // Ensure filename is not empty
+      if !url.lastPathComponent.isEmpty {
+        print(
+          "[AccessibilityTextService] Found document path: \(documentPath), file: \(url.lastPathComponent)"
+        )
+        return url.lastPathComponent
       }
     }
 
+    print("[AccessibilityTextService] No document path found or filename empty. Trying main window title...")
+
+    // Use helper to get title and extract filename
+    if let windowTitle = getMainWindowTitle(from: appElement),
+      let fileName = extractFileNameFromTitle(windowTitle)
+    {
+      print("[AccessibilityTextService] Extracted file name from title: \(fileName)")
+      return fileName
+    }
+
     print("[AccessibilityTextService] No valid file name found.")
+    return nil
+  }
+
+  // MARK: - Helper Functions for Window/File Info
+
+  /// Helper to get the main window title from an application element.
+  private func getMainWindowTitle(from appElement: AXUIElement) -> String? {
+    var windowElement: AnyObject?
+    guard
+      AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowElement) == .success,
+      let windowArray = windowElement as? [AXUIElement],
+      let mainWindow = windowArray.first
+    else {
+      print("[AccessibilityTextService] Could not get main window element.")
+      return nil
+    }
+
+    if let windowTitle = getAttributeText(from: mainWindow, attribute: kAXTitleAttribute as CFString) {
+      print("[AccessibilityTextService] Found window title: \(windowTitle)")
+      return windowTitle
+    } else {
+      print("[AccessibilityTextService] Could not get window title attribute.")
+      return nil
+    }
+  }
+
+  /// Helper to extract a likely filename from a window title using regex.
+  private func extractFileNameFromTitle(_ windowTitle: String) -> String? {
+    do {
+      // Regex to find a valid filename with an extension
+      // Made slightly more robust: allows dots in filename before the extension
+      let regex = try NSRegularExpression(pattern: #"\b[\w\s.,-]+?\.[A-Za-z0-9]+(?=\b|\s|$)"#, options: [])
+      let range = NSRange(location: 0, length: windowTitle.utf16.count)
+
+      // Find the *last* match, as titles might include paths (e.g., "file.txt - /path/to/file.txt - Editor")
+      let matches = regex.matches(in: windowTitle, options: [], range: range)
+      if let match = matches.last {
+        let matchedString = (windowTitle as NSString).substring(with: match.range)
+        // Basic sanitization: trim whitespace
+        let potentialFileName = matchedString.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Optional: Add more validation if needed (e.g., check for invalid characters)
+        if !potentialFileName.isEmpty {
+          return potentialFileName
+        }
+      }
+    } catch {
+      print("[AccessibilityTextService] Failed to create regex for filename extraction: \(error)")
+    }
     return nil
   }
 }
