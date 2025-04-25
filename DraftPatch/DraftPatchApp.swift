@@ -14,7 +14,7 @@ struct DraftPatchApp: App {
   @StateObject private var viewModel: DraftPatchViewModel
 
   init() {
-    self.modelContainer = Self.setupModelContainer(retryOnFailure: true)
+    self.modelContainer = try! Self.setupModelContainer()
     let ctx = ModelContext(self.modelContainer)
     let repository = SwiftDataDraftPatchRepository(context: ctx)
 
@@ -33,7 +33,7 @@ struct DraftPatchApp: App {
     DraftingService.shared.checkAccessibilityPermission()
   }
 
-  private static func setupModelContainer(retryOnFailure: Bool) -> ModelContainer {
+  private static func setupModelContainer() throws -> ModelContainer {
     do {
       let schema = Schema([
         ChatThread.self,
@@ -47,27 +47,11 @@ struct DraftPatchApp: App {
       )
 
       return try ModelContainer(
-        for: ChatThread.self, ChatMessage.self, Settings.self,
+        for: ChatThread.self,
+        ChatMessage.self,
+        Settings.self,
         configurations: configuration
       )
-    } catch {
-      print("Error creating ModelContainer: \(error)")
-      if retryOnFailure {
-        print("Deleting store and retrying...")
-        let storeURL = URL(fileURLWithPath: "\(NSHomeDirectory())/Library/Application Support/default.store")
-        let fileManager = FileManager.default
-        if fileManager.fileExists(atPath: storeURL.path) {
-          do {
-            try fileManager.removeItem(at: storeURL)
-            print("Deleted existing store at: \(storeURL)")
-          } catch {
-            print("Failed to delete store: \(error)")
-          }
-        }
-        return setupModelContainer(retryOnFailure: false)
-      } else {
-        fatalError("Failed to initialize model container after retrying.")
-      }
     }
   }
 

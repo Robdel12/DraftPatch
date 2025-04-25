@@ -22,27 +22,46 @@ struct ModelPickerPopoverView: View {
 
   @FocusState private var isSearchFieldFocused: Bool
 
-  var filteredModels: [ChatModel] {
+  // Filtered models based on search text
+  var searchedModels: [ChatModel] {
     let enabledModels = viewModel.availableModels.filter { $0.enabled }
 
-    let sortedModels = enabledModels.sorted {
+    if searchText.isEmpty {
+      return enabledModels
+    } else {
+      return enabledModels.filter { $0.displayName.localizedCaseInsensitiveContains(searchText) }
+    }
+  }
+
+  // Models sorted for display and navigation (Provider -> Last Used)
+  var flattenedSortedModels: [ChatModel] {
+    searchedModels.sorted {
+      if $0.provider != $1.provider {
+        // Sort providers alphabetically
+        return $0.provider.displayName < $1.provider.displayName
+      }
+      // Within the same provider, sort by last used date (most recent first)
       guard let date1 = $0.lastUsed, let date2 = $1.lastUsed else {
         return $0.lastUsed != nil
       }
-
       return date1 > date2
     }
+  }
 
-    if searchText.isEmpty {
-      return sortedModels
-    } else {
-      return sortedModels.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-    }
+  // Grouped models for section display
+  var groupedModels: [LLMProvider: [ChatModel]] {
+    Dictionary(grouping: flattenedSortedModels, by: { $0.provider })
+  }
+
+  // Sorted providers that have models matching the search
+  var sortedProviders: [LLMProvider] {
+    groupedModels.keys.sorted { $0.displayName < $1.displayName }
   }
 
   var canDownloadNewModel: Bool {
     !searchText.isEmpty
-      && !viewModel.availableModels.contains(where: { $0.name.localizedCaseInsensitiveContains(searchText) })
+      && !viewModel.availableModels
+        .contains(where: { $0.displayName.localizedCaseInsensitiveContains(searchText) })
   }
 
   var body: some View {
@@ -56,7 +75,7 @@ struct ModelPickerPopoverView: View {
       .padding(8)
       .contentShape(Rectangle())
     }
-    .accessibilityLabel(viewModel.selectedModel?.name ?? "")
+    .accessibilityLabel(viewModel.selectedModel?.displayName ?? "")
     .accessibilityIdentifier("ModelSelectorButton")
     .keyboardShortcut("e", modifiers: .command)
     .buttonStyle(.plain)
@@ -90,8 +109,8 @@ struct ModelPickerPopoverView: View {
         }
       }
     }
-    .onChange(of: filteredModels.count) { _, newCount in
-      if selectedIndex >= newCount {
+    .onChange(of: flattenedSortedModels.count) { _, newCount in
+      if selectedIndex >= newCount + (canDownloadNewModel ? 1 : 0) {
         selectedIndex = newCount > 0 ? newCount - 1 : 0
       }
     }
@@ -113,7 +132,7 @@ struct ModelPickerPopoverView: View {
           selectedIndex = 0
         }
         .onSubmit {
-          if !filteredModels.isEmpty {
+          if selectedIndex < flattenedSortedModels.count {
             selectModel(at: selectedIndex)
           } else if canDownloadNewModel {
             pullModel(modelName: searchText)
@@ -151,38 +170,48 @@ struct ModelPickerPopoverView: View {
   private var modelListView: some View {
     ScrollViewReader { proxy in
       ScrollView {
-        LazyVStack(alignment: .leading, spacing: 4) {
-          if filteredModels.isEmpty && !canDownloadNewModel {
+        VStack(alignment: .leading, spacing: 0) {
+          if flattenedSortedModels.isEmpty && !canDownloadNewModel {
             Text("No matching models found")
               .foregroundColor(.secondary)
               .padding(.vertical, 8)
           } else {
-            ForEach(Array(filteredModels.enumerated()), id: \.element.id) { index, model in
-              ModelPickerRow(
-                model: model,
-                isSelected: model.id == viewModel.selectedModel?.id,
-                isHighlighted: selectedIndex == index
-              )
-              .id(index)
-              .onTapGesture {
-                selectModel(at: index)
-              }
-              .contextMenu {
-                if model.provider == .ollama {
-                  Button(role: .destructive) {
-                    deleteModel(modelName: model.name)
-                  } label: {
-                    Text("Delete")
+            ForEach(sortedProviders, id: \.self) { provider in
+              if let models = groupedModels[provider], !models.isEmpty {
+                Section(
+                  header: Text(provider.displayName).font(.caption).foregroundColor(.secondary).padding(
+                    .vertical,
+                    4
+                  )
+                ) {
+                  ForEach(models) { model in
+                    if let flatIndex = flattenedSortedModels.firstIndex(where: { $0.id == model.id }) {
+                      ModelPickerRow(
+                        model: model,
+                        isSelected: model.id == viewModel.selectedModel?.id,
+                        isHighlighted: selectedIndex == flatIndex
+                      )
+                      .id(model.id)
+                      .onTapGesture {
+                        selectModel(at: flatIndex)
+                      }
+                      .contextMenu {
+                        if model.provider == .ollama {
+                          Button(role: .destructive) {
+                            deleteModel(modelName: model.name)
+                          } label: {
+                            Text("Delete")
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
 
             if canDownloadNewModel {
-              if !filteredModels.isEmpty {
-                Divider()
-                  .padding(.vertical, 4)
-              }
+              Divider().padding(.vertical, 4)
 
               if isPullingModel {
                 VStack(alignment: .leading, spacing: 8) {
@@ -192,7 +221,7 @@ struct ModelPickerPopoverView: View {
                   ProgressView(value: downloadProgress)
                     .progressViewStyle(LinearProgressViewStyle())
                 }
-                .padding(.vertical, 8)
+                .padding(8)
               } else if downloadCompleted {
                 HStack {
                   Image(systemName: "checkmark.circle.fill")
@@ -200,7 +229,7 @@ struct ModelPickerPopoverView: View {
                   Text("Download complete!")
                     .foregroundColor(.green)
                 }
-                .padding(.vertical, 8)
+                .padding(8)
               } else if downloadFailed {
                 VStack(alignment: .leading, spacing: 4) {
                   HStack {
@@ -214,7 +243,7 @@ struct ModelPickerPopoverView: View {
                     .foregroundColor(.red)
                     .lineLimit(2)
                 }
-                .padding(.vertical, 8)
+                .padding(8)
               } else {
                 Button(action: {
                   pullModel(modelName: searchText)
@@ -226,23 +255,41 @@ struct ModelPickerPopoverView: View {
                       .foregroundColor(.accentColor)
                     Spacer()
                   }
-                  .padding(.vertical, 8)
+                  .padding(8)
+                  .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 .background(
-                  selectedIndex == filteredModels.count ? Color.accentColor.opacity(0.1) : Color.clear
+                  selectedIndex == flattenedSortedModels.count ? Color.accentColor.opacity(0.2) : Color.clear
                 )
                 .cornerRadius(4)
-                .id(filteredModels.count)
+                .id("download_\(searchText)")
               }
             }
           }
         }
       }
-      .frame(height: min(350, CGFloat(filteredModels.count * 40 + (canDownloadNewModel ? 60 : 0))))
+      .frame(
+        height: min(
+          350,
+          CGFloat(
+            flattenedSortedModels.count * 36 + sortedProviders.count * 24 + (canDownloadNewModel ? 60 : 0)
+          )
+        )
+      )
       .onChange(of: selectedIndex) { _, newIndex in
+        let targetId: AnyHashable
+
+        if newIndex < flattenedSortedModels.count {
+          targetId = flattenedSortedModels[newIndex].id
+        } else if canDownloadNewModel {
+          targetId = "download_\(searchText)"
+        } else {
+          return
+        }
+
         withAnimation {
-          proxy.scrollTo(newIndex, anchor: .bottom)
+          proxy.scrollTo(targetId, anchor: .bottom)
         }
       }
     }
@@ -251,23 +298,19 @@ struct ModelPickerPopoverView: View {
   private func navigateUp() {
     if selectedIndex > 0 {
       selectedIndex -= 1
-    } else if canDownloadNewModel && filteredModels.count > 0 {
-      selectedIndex = filteredModels.count
     }
   }
 
   private func navigateDown() {
-    let maxIndex = canDownloadNewModel ? filteredModels.count : filteredModels.count - 1
+    let maxIndex = flattenedSortedModels.count + (canDownloadNewModel ? 1 : 0) - 1
     if selectedIndex < maxIndex {
       selectedIndex += 1
-    } else {
-      selectedIndex = 0
     }
   }
 
   private func selectModel(at index: Int) {
-    if index < filteredModels.count {
-      viewModel.selectedModel = filteredModels[index]
+    if index < flattenedSortedModels.count {
+      viewModel.selectedModel = flattenedSortedModels[index]
       isPopoverPresented = false
     }
   }
@@ -372,13 +415,13 @@ struct ModelPickerRow: View {
   var body: some View {
     HStack {
       Text(model.displayName)
-        .foregroundColor(isSelected ? .white : .primary)
+        .foregroundColor(isHighlighted ? .white : .primary)
 
       Spacer()
 
       if isSelected {
         Image(systemName: "checkmark")
-          .foregroundColor(.accentColor)
+          .foregroundColor(isHighlighted ? .white : .accentColor)
       }
     }
     .padding(.vertical, 8)
@@ -386,7 +429,7 @@ struct ModelPickerRow: View {
     .background(
       Group {
         if isHighlighted {
-          Color.accentColor.opacity(0.2)
+          Color.accentColor
         } else if isSelected {
           Color.accentColor.opacity(0.1)
         } else {

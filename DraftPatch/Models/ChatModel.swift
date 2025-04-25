@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-enum LLMProvider: String, Codable, CaseIterable {
+enum LLMProvider: String, Codable, CaseIterable, Comparable {
   case ollama
   case openai
   case gemini
@@ -25,6 +25,10 @@ enum LLMProvider: String, Codable, CaseIterable {
     case .anthropic:
       return "Anthropic"
     }
+  }
+
+  static func < (lhs: LLMProvider, rhs: LLMProvider) -> Bool {
+    lhs.displayName < rhs.displayName
   }
 }
 

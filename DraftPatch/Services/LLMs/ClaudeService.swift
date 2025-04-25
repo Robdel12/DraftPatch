@@ -147,7 +147,8 @@ final class ClaudeService: LLMService {
 
             let userInfo = [NSLocalizedDescriptionKey: "HTTP \(httpResponse.statusCode): \(errorBody)"]
             continuation.finish(
-              throwing: NSError(domain: "AnthropicError", code: httpResponse.statusCode, userInfo: userInfo))
+              throwing: NSError(domain: "AnthropicError", code: httpResponse.statusCode, userInfo: userInfo)
+            )
           }
 
           var currentEvent: String?
